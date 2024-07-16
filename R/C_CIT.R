@@ -5,10 +5,10 @@
 NULL
 
 ######################################################################
-# Program Name: C_CIT_V13_CI.R
+# Program Name: C_CIT_V14_CI.R
 # Purpose: R CIT functions, some including C++ routines
 # Programmer: Joshua Millstein
-# Date: 08/03/23
+# Date: 05/03/23
 #
 # Input:
 #   L: vector or nxp matrix of continuous instrumental variables
@@ -58,31 +58,76 @@ ms_f = function(mat) {
 
 }
 
-# CIT for binary outcome and permutation results, null is the empirical distribution for pvalues 1-3 and independence for p-value 4.
-# Input:
-#   L: vector or nxp matrix of continuous instrumental variables. If trios not equal to NULL then L includes a single instrumental variable for each test. If trios=NULL then L can be a vector, matrix or dataframe representing just one instrumental variable or alternatively a set of instrumental variables that jointly may be mediated by G.
-#   G: vector or nxp matrix (if trios=NULL then G must be a single variable) of candidate causal mediators.
-#   T: vector or nxp matrix of traits (if trios=NULL then T must be a single variable)
-#   trios: A matrix or dataframe of three columns. Each row represents a planned test to be conducted
-#          and the number of rows is equal to the total number of tests. The first column is an
-#          indicator for the column in L, the second is an indicator for the column in G, and the third
-#          is an indicator for the column in T. If trios not equal to NULL, then L, G, and T must be matrices or dataframes all of the same dimensions.
+# Causal Inference Test for a Binary Outcome in Version 1
 
-#' Do CIT on binary output
+#' Causal Inference Test for a Binary Outcome in Version 1
 #'
-#' This function do CIT on binary output
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a trait or clinical outcome. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is binary, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
-#' @param  L A numeric vector
-#' @param  G A numeric vector
-#' @param  T A numeric vector
-#' @param  C A numeric vector
-#' @param  maxit A integer
-#' @param  n.perm A integer
-#' @param  perm.index a dataframe
-#' @param  rseed A number for seed.
-#' @return A data frame of pvalue
+#' @usage
+#' cit.bp.v1(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Binary vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#'
+#' @details The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true. For component test 4, rather than using the semiparametric approach proposed by Millstein et al. (2009), here it is estimated completely by permutation, resulting in an exact test. If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.bp.v1 tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors
+#' e1 = matrix(rnorm(ss), ncol=1)
+#' e2 = matrix(rnorm(ss), ncol=1)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
+#' T = matrix(.3*G + e2, ncol=1)
+#' T = ifelse( T > median(T), 1, 0 )
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests
+#' results = cit.bp.v1(L, G, T)
+#' results
+#'
+#' results = cit.bp.v1(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.bp.v1(L, G, T, C)
+#' results
+#'
+#' results = cit.bp.v1(L, G, T, C, n.perm=5)
+#' results
+#'
 #' @export
-cit.bp = function(L,
+cit.bp.v1 = function(L,
                   G,
                   T,
                   C = NULL,
@@ -92,7 +137,7 @@ cit.bp = function(L,
                   rseed = NULL) {
   permit = 1000
   if(is.null(rseed)){
-    rseed=100
+    rseed=as.integer(Sys.time())
   }
   if(is.null(perm.index) && n.perm!=0 ){
     set.seed(rseed)
@@ -152,7 +197,11 @@ cit.bp = function(L,
     if (aa != 2)
       stop("dim(G)[2] + dim(T)[2]  must equal 2")
 
-    pval = pval1 = pval2 = pval3 = pval4 = 1.0 # output component p-values
+    pval = 1.0
+    pval1 = 1.0
+    pval2 = 1.0
+    pval3 = 1.0
+    pval4 = 1.0 # output component p-values
     ntest = length(pval)
     nrow = dim(L)[1]
     ncol = dim(L)[2]
@@ -222,13 +271,16 @@ cit.bp = function(L,
       stop("dim(G)[2] + dim(T)[2]  must equal 2")
 
     trios = 0
-    pval = pval1 = pval2 = pval3 = pval4 = rep(1.0, (n.perm + 1)) # output component p-values
+    pval=rep(1.0, (n.perm +1))
+    pval1=rep(1.0, (n.perm +1))
+    pval2=rep(1.0, (n.perm +1))
+    pval3=rep(1.0, (n.perm +1))
+    pval4=rep(1.0, (n.perm +1))# output component p-values
     nrow = dim(L)[1]
     ncol = dim(L)[2]
 
     if (is.null(C) & is.null(rseed)) {
       # here permutations are not the same between multiple omnibus tests, so algorithm is slightly more computationally efficient.
-
       citconlog3p(
         as.double(L),
         as.double(G),
@@ -316,7 +368,7 @@ cit.bp = function(L,
 
   return(rslts)
 
-} # End cit.bp function
+} # End cit.bp.v1 function
 
 # fdr function w/ overdispersion parameter
 # In order to make CIs estimable, use the conservative approximation that at least 1 positve test was observed among permuted
@@ -647,19 +699,74 @@ linregM.nc = function(X, Y, C, ncp = 0) {
 
 # apply .v2 modification, testing H2 using non-central chi-square
 
-#' Do CIT on binary output with version 2
+# Causal Inference Test for a Binary Outcome in Version 2
+
+#' Causal Inference Test for a Binary Outcome in Version 2
 #'
-#' This function do CIT on binary output with version 2
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a trait or clinical outcome. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is binary, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
-#' @param  L A numeric vector
-#' @param  G A numeric vector
-#' @param  T A numeric vector
-#' @param  C A numeric vector
-#' @param  maxit A integer
-#' @param  n.perm A integer
-#' @param  perm.index a dataframe
-#' @param  rseed A number for seed.
-#' @return A data frame of pvalue
+#' @usage
+#' cit.bp.v2(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Binary vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#'
+#' @details The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true. For component test 4, rather than using the semiparametric approach proposed by Millstein et al. (2009), here it is estimated completely by permutation, resulting in an exact test. If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.bp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors
+#' e1 = matrix(rnorm(ss), ncol=1)
+#' e2 = matrix(rnorm(ss), ncol=1)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
+#' T = matrix(.3*G + e2, ncol=1)
+#' T = ifelse( T > median(T), 1, 0 )
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests
+#' results = cit.bp.v2(L, G, T)
+#' results
+#'
+#' results = cit.bp.v2(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.bp.v2(L, G, T, C)
+#' results
+#'
+#' results = cit.bp.v2(L, G, T, C, n.perm=5)
+#' results
+#'
 #' @export
 cit.bp.v2 = function(L,
                      G,
@@ -671,7 +778,7 @@ cit.bp.v2 = function(L,
                      rseed = NULL) {
   permit = 1000
   if(is.null(rseed)){
-    rseed=100
+    rseed=as.integer(Sys.time())
   }
   if(is.null(perm.index) && n.perm!=0 ){
     set.seed(rseed)
@@ -797,9 +904,7 @@ cit.bp.v2 = function(L,
         as.double(pval4),
         as.double(pval3nc),
         as.integer(rseed)
-
       )
-
 
 
       # using pval3nc and df's, compute non-centrality parameter, lambda
@@ -1012,22 +1117,460 @@ cit.bp.v2 = function(L,
 } # End cit.bp.v2 function
 
 
-# CIT version 2, binary outcome w/ multiple mediators possible permutations
 
-#' Do CIT on binary output with multiple mediators and version 2
+
+# Causal Inference Test for multiple mediators and a Binary Outcome in Version 1
+
+#' Causal Inference Test for multiple mediators and a Binary Outcome in Version 1
 #'
-#' This function do CIT on binary output with multiple mediators and version 2
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a trait or clinical outcome. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is binary, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
-#' @param  L A numeric vector
-#' @param  G A numeric vector
-#' @param  T A numeric vector
-#' @param  C A numeric vector
-#' @param  maxit A integer
-#' @param  n.perm A integer
-#' @param  perm.index a dataframe
-#' @param  rseed A number for seed.
-#' @param  v2 A bool for whether use v2
-#' @return A data frame of pvalue
+#' @usage
+#' cit.bp.m.v1(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Binary vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#'
+#' @details The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true. For component test 4, rather than using the semiparametric approach proposed by Millstein et al. (2009), here it is estimated completely by permutation, resulting in an exact test. If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.bp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors
+#' e1 = matrix(rnorm(ss * 3), ncol=3)
+#' e2 = matrix(rnorm(ss * 3), ncol=3)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=3)
+#' T = matrix(.3*G + e2, ncol=3)
+#' T <- rowSums(T)
+#' T = ifelse( T > median(T), 1, 0 )
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests
+#' results = cit.bp.m.v1(L, G, T)
+#' results
+#'
+#' results = cit.bp.m.v1(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.bp.m.v1(L, G, T, C)
+#' results
+#'
+#' results = cit.bp.m.v1(L, G, T, C, n.perm=5)
+#' results
+#'
+#' @export
+cit.bp.m.v1 = function(L,
+                       G,
+                       T,
+                       C = NULL,
+                       maxit = 10000,
+                       n.perm = 0,
+                       perm.index = NULL,
+                       rseed = NULL) {
+  permit = 1000
+  if(is.null(rseed)){
+    rseed=as.integer(Sys.time())
+  }
+  if(is.null(perm.index) && n.perm!=0 ){
+    set.seed(rseed)
+    perm.index <- replicate(n.perm, sample(length(T)))
+  }
+
+  if (!is.null(perm.index)) {
+    n.perm = ncol(perm.index)
+    perm.index = as.matrix(perm.index)
+    perm.index = perm.index - 1
+  }
+
+  if (is.vector(L)) {
+    L = matrix(L, ncol = 1)
+  } else {
+    L = as.matrix(L)
+  }
+  if (is.vector(G)) {
+    G = matrix(G, ncol = 1)
+  } else {
+    G = as.matrix(G)
+  }
+  if (is.vector(T)) {
+    T = matrix(T, ncol = 1)
+  } else {
+    T = as.matrix(T)
+  }
+  if (!is.null(C)) {
+    if (is.vector(C)) {
+      C = matrix(C, ncol = 1)
+    } else {
+      C = as.matrix(C)
+    }
+  }
+
+  aa = nrow(L) == nrow(T)
+  if (!aa)
+    stop("Error: rows of L must equal rows of T.")
+  aa = nrow(G) == nrow(T)
+  if (!aa)
+    stop("Error: rows of G must equal rows of T.")
+  if (!is.null(C)) {
+    aa = nrow(C) == nrow(T)
+    if (!aa)
+      stop("Error: rows of C must equal rows of T.")
+  }
+
+  L = ms_f(L)
+  G = ms_f(G)
+  T = ms_f(T)
+  if (!is.null(C))
+    C = ms_f(C)
+
+  colnames(T) = "T"
+  colnames(G) = paste("G", 1:ncol(G), sep = "")
+  colnames(L) = paste("L", 1:ncol(L), sep = "")
+  if (!is.null(C))
+    colnames(C) = paste("C", 1:ncol(C), sep = "")
+
+  ## Remove missing
+  #tmp = na.exclude(cbind(T, L, G, C))
+  #if (is.null(C)) {
+  #  names(tmp) = c("T", colnames(L), colnames(G))
+  #} else {
+  #  names(tmp) = c("T", colnames(L), colnames(G))
+  #}
+  #T = as.matrix(tmp[, "T"])
+  #L = as.matrix(tmp[, colnames(L)])
+  #G = as.matrix(tmp[, colnames(G)])
+  #if (!is.null(C))
+  #  C = as.matrix(tmp[, colnames(C)])
+  #rm(tmp)
+
+  df.C = 0
+  if (!is.null(C))
+    df.C = ncol(C)
+  nobs = dim(T)[1]
+  df.L = dim(L)[2]
+  df.G = dim(G)[2]
+  pval=1.0
+  pval1=1.0
+  pval2=1.0
+  pval3=1.0
+  pval4=1.0
+  pval3nc=1.0 # output component p-values
+
+  # if( n.resampl < n.perm ) n.resampl = n.perm
+  if (!is.null(C)) {
+    mydat = as.data.frame(cbind(L, G, T, C))
+  } else
+    mydat = as.data.frame(cbind(L, G, T))
+  for (i in 1:ncol(mydat))
+    mydat[, i] = as.numeric(mydat[, i])
+  L.nms = paste("L", 1:ncol(L), sep = "")
+  G.nms = paste("G", 1:ncol(G), sep = "")
+  C.nms = NULL
+  if (!is.null(C))
+    C.nms = paste("C", 1:ncol(C), sep = "")
+  names(mydat) = c(L.nms, G.nms, "T", C.nms)
+
+  if (n.perm == 0) {
+    if (is.null(C)) {
+      citbinm(
+        as.double(L),
+        as.double(G),
+        as.double(T),
+        as.integer(maxit),
+        as.integer(nobs),
+        as.integer(df.L),
+        as.integer(df.G),
+        as.double(pval1),
+        as.double(pval2),
+        as.double(pval4),
+        as.double(pval3nc),
+        as.integer(rseed)
+
+      )
+      df1 = df.L
+      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
+
+      fncp = 0
+
+      # p-value, p3: G ~ L|T
+      p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
+
+
+
+    } else {
+      citbinmcvr(
+        as.double(L),
+        as.double(G),
+        as.double(T),
+        as.double(C),
+        as.integer(maxit),
+        as.integer(nobs),
+        as.integer(df.L),
+        as.integer(df.G),
+        as.integer(df.C),
+        as.double(pval1),
+        as.double(pval2),
+        as.double(pval4),
+        as.double(pval3nc),
+        as.integer(rseed)
+
+      )
+      df1 = df.L
+      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
+
+      fncp = 0
+
+      # p-value, p3: G ~ L|T
+      p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
+
+    } # End else is null C
+
+    ntest = 1
+    rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
+    names(rslts) = c("p_cit",
+                     "p_TassocL",
+                     "p_TassocGgvnL",
+                     "p_GassocLgvnT",
+                     "p_LindTgvnG")
+    rslts[1, "p_TassocL"] = pval1
+    rslts[1, "p_TassocGgvnL"] = pval2
+    rslts[1, "p_GassocLgvnT"] = p3
+    rslts[1, "p_LindTgvnG"] = pval4
+    rslts[1, "p_cit"] = max(rslts[1, c("p_TassocL",
+                                       "p_TassocGgvnL",
+                                       "p_GassocLgvnT",
+                                       "p_LindTgvnG")])
+
+  } # End if n.perm == 0
+
+  if (n.perm > 0) {
+    if (is.null(perm.index)) {
+      perm.index = matrix(NA, nrow = nrow(L), ncol = n.perm)
+      for (j in 1:n.perm)
+        perm.index[, j] = sample(1:nrow(L))
+    }
+    pval=rep(1.0, (n.perm +1))
+    pval1=rep(1.0, (n.perm +1))
+    pval2=rep(1.0, (n.perm +1))
+    pval3=rep(1.0, (n.perm +1))
+    pval4=rep(1.0, (n.perm +1))
+    pval3nc=rep(1.0, (n.perm +1)) # output component p-values
+    if (is.null(rseed))
+      rseed = ceiling(runif(1) * 10000000)
+    set.seed(rseed)
+
+    if (is.null(C)) {
+      citbinmp(
+        as.double(L),
+        as.double(G),
+        as.double(T),
+        as.integer(maxit),
+        as.integer(permit),
+        as.integer(n.perm),
+        as.integer(nobs),
+        as.integer(df.L),
+        as.integer(df.G),
+        as.double(pval1),
+        as.double(pval2),
+        as.double(pval4),
+        as.double(pval3nc),
+        as.integer(perm.index),
+        as.integer(rseed)
+
+      )
+      df1 = df.L
+      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
+      G.nc = qf(pval3nc,
+                df1 = df1,
+                df2 = df2,
+                lower.tail = FALSE)
+      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
+      for (j in 1:length(fncp)) {
+        fncp[j] = 0
+      }
+
+      # p-value, p3: G ~ L|T
+      p3 = rep(1, length(fncp))
+      for (j in 1:length(fncp)) {
+        ind.perm = 1:nrow(mydat)
+        if (j > 1)
+          ind.perm = sample(1:nrow(mydat))
+        tmpdat = mydat
+        tmpdat[, L.nms] = mydat[ind.perm, L.nms]
+        p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, "T"], fncp[j])
+        rm(tmpdat)
+      }
+      pval3 = p3
+
+
+    } else {
+      citbinmpcvr(
+        as.double(L),
+        as.double(G),
+        as.double(T),
+        as.double(C),
+        as.integer(maxit),
+        as.integer(permit),
+        as.integer(n.perm),
+        as.integer(nobs),
+        as.integer(df.L),
+        as.integer(df.G),
+        as.integer(df.C),
+        as.double(pval1),
+        as.double(pval2),
+        as.double(pval4),
+        as.double(pval3nc),
+        as.integer(perm.index),
+        as.integer(rseed)
+
+      )
+      df1 = df.L
+      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
+      G.nc = qf(pval3nc,
+                df1 = df1,
+                df2 = df2,
+                lower.tail = FALSE)
+      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
+      for (j in 1:length(fncp)) {
+        fncp[j] = 0
+      }
+
+      # p-value, p3: G ~ L|T
+      p3 = rep(1, length(fncp))
+      for (j in 1:length(fncp)) {
+        ind.perm = 1:nrow(mydat)
+        if (j > 1)
+          ind.perm = sample(1:nrow(mydat))
+        tmpdat = mydat
+        tmpdat[, L.nms] = mydat[ind.perm, L.nms]
+        p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, "T"], fncp[j])
+        rm(tmpdat)
+      }
+      pval3 = p3
+
+    } # End else is null covar and perm.imat
+
+    rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
+    names(rslts) = c("perm",
+                     "p_cit",
+                     "p_TassocL",
+                     "p_TassocGgvnL",
+                     "p_GassocLgvnT",
+                     "p_LindTgvnG")
+    for (perm in 0:n.perm) {
+      rslts[perm + 1, "perm"] = perm
+      rslts[perm + 1, "p_cit"] = max(c(pval1[perm + 1], pval2[perm +1], pval3[perm + 1], pval4[perm + 1]))
+      rslts[perm + 1, "p_TassocL"] = pval1[perm + 1]
+      rslts[perm + 1, "p_TassocGgvnL"] = pval2[perm + 1]
+      rslts[perm + 1, "p_GassocLgvnT"] = p3[perm + 1]
+      rslts[perm + 1, "p_LindTgvnG"] = pval4[perm + 1]
+    }
+  } # End if perm > 0
+
+  return(rslts)
+
+} # End cit.bp.m.v1 function
+
+
+# Causal Inference Test for multiple mediators and a Binary Outcome in Version 2
+
+#' Causal Inference Test for multiple mediators and a Binary Outcome in Version 2
+#'
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a trait or clinical outcome. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is binary, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+#'
+#' @usage
+#' cit.bp.m.v2(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Binary vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#'
+#' @details The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true. For component test 4, rather than using the semiparametric approach proposed by Millstein et al. (2009), here it is estimated completely by permutation, resulting in an exact test. If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.bp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors
+#' e1 = matrix(rnorm(ss * 3), ncol=3)
+#' e2 = matrix(rnorm(ss * 3), ncol=3)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=3)
+#' T = matrix(.3*G + e2, ncol=3)
+#' T <- rowSums(T)
+#' T = ifelse( T > median(T), 1, 0 )
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests
+#' results = cit.bp.m.v2(L, G, T)
+#' results
+#'
+#' results = cit.bp.m.v2(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.bp.m.v2(L, G, T, C)
+#' results
+#'
+#' results = cit.bp.m.v2(L, G, T, C, n.perm=5)
+#' results
+#'
 #' @export
 cit.bp.m.v2 = function(L,
                        G,
@@ -1037,10 +1580,10 @@ cit.bp.m.v2 = function(L,
                        n.perm = 0,
                        perm.index = NULL,
                        rseed = NULL,
-                       v2 = TRUE) {
+                       robust=TRUE) {
   permit = 1000
   if(is.null(rseed)){
-    rseed=100
+    rseed=as.integer(Sys.time())
   }
   if(is.null(perm.index) && n.perm!=0 ){
     set.seed(rseed)
@@ -1170,7 +1713,7 @@ cit.bp.m.v2 = function(L,
                 df2 = df2,
                 lower.tail = FALSE)
       fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      if (fncp < 0 | !v2)
+      if (fncp < 0)
         fncp = 0
 
       # p-value, p3: G ~ L|T
@@ -1205,7 +1748,7 @@ cit.bp.m.v2 = function(L,
                 df2 = df2,
                 lower.tail = FALSE)
       fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      if (fncp < 0 | !v2)
+      if (fncp < 0)
         fncp = 0
 
       # p-value, p3: G ~ L|T
@@ -1222,7 +1765,7 @@ cit.bp.m.v2 = function(L,
                      "p_LindTgvnG")
     rslts[1, "p_TassocL"] = pval1
     rslts[1, "p_TassocGgvnL"] = pval2
-    rslts[1, "p_GassocLgvnT"] = pval3
+    rslts[1, "p_GassocLgvnT"] = p3
     rslts[1, "p_LindTgvnG"] = pval4
     rslts[1, "p_cit"] = max(rslts[1, c("p_TassocL",
                                        "p_TassocGgvnL",
@@ -1232,6 +1775,11 @@ cit.bp.m.v2 = function(L,
   } # End if n.perm == 0
 
   if (n.perm > 0) {
+    if (is.null(perm.index)) {
+      perm.index = matrix(NA, nrow = nrow(L), ncol = n.perm)
+      for (j in 1:n.perm)
+        perm.index[, j] = sample(1:nrow(L))
+    }
     pval=rep(1.0, (n.perm +1))
     pval1=rep(1.0, (n.perm +1))
     pval2=rep(1.0, (n.perm +1))
@@ -1272,7 +1820,7 @@ cit.bp.m.v2 = function(L,
                 lower.tail = FALSE)
       fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
       for (j in 1:length(fncp)) {
-        if (fncp[j] < 0 | !v2)
+        if (fncp[j] < 0)
           fncp[j] = 0
       }
 
@@ -1322,7 +1870,7 @@ cit.bp.m.v2 = function(L,
                 lower.tail = FALSE)
       fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
       for (j in 1:length(fncp)) {
-        if (fncp[j] < 0 | !v2)
+        if (fncp[j] < 0)
           fncp[j] = 0
       }
 
@@ -1363,33 +1911,227 @@ cit.bp.m.v2 = function(L,
 } # End cit.bp.m.v2 function
 
 
+# Causal Inference Test for a Binary Outcome
 
-
-# CIT for continuous outcome and permutation results, null is the empirical distribution for pvalues 1-3 and independence for p-value 4.
-# Input:
-#   L: vector or nxp matrix of continuous instrumental variables. If trios not equal to NULL then L includes a single instrumental variable for each test. If trios=NULL then L can be a vector, matrix or dataframe representing just one instrumental variable or alternatively a set of instrumental variables that jointly may be mediated by G.
-#   G: vector or nxp matrix (if trios=NULL then G must be a single variable) of candidate causal mediators.
-#   T: vector or nxp matrix of traits (if trios=NULL then T must be a single variable)
-#   trios: A matrix or dataframe of three columns. Each row represents a planned test to be conducted
-#          and the number of rows is equal to the total number of tests. The first column is an
-#          indicator for the column in L, the second is an indicator for the column in G, and the third
-#          is an indicator for the column in T. If trios not equal to NULL, then L, G, and T must be matrices or dataframes all of the same dimensions.
-
-#' Do CIT on continuous output
+#' Causal Inference Test for a Binary Outcome
 #'
-#' This function do CIT on continuous output
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a trait or clinical outcome. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is binary, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
-#' @param  L A numeric vector
-#' @param  G A numeric vector
-#' @param  T A numeric vector
-#' @param  C A numeric vector
-#' @param  maxit A integer
-#' @param  n.perm A integer
-#' @param  perm.index a dataframe
-#' @param  rseed A number for seed.
-#' @return A data frame of pvalue
+#' @usage
+#' cit.bp(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robust=TRUE)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Binary vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#' @param robust True for v2 algorithm and False for v1 algorithm
+#'
+#' @details The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true. For component test 4, rather than using the semiparametric approach proposed by Millstein et al. (2009), here it is estimated completely by permutation, resulting in an exact test. If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.bp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors for single mediators
+#' e1 = matrix(rnorm(ss), ncol=1)
+#' e2 = matrix(rnorm(ss), ncol=1)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices for single mediators
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
+#' T = matrix(.3*G + e2, ncol=1)
+#' T = ifelse( T > median(T), 1, 0 )
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests for single mediators and v1 algorithm
+#' results = cit.bp(L, G, T, robust = FALSE)
+#' results
+#'
+#' results = cit.bp(L, G, T, perm.index=perm.index, n.perm=5, robust = FALSE)
+#' results
+#'
+#' results = cit.bp(L, G, T, C, robust = FALSE)
+#' results
+#'
+#' results = cit.bp(L, G, T, C, n.perm=5, robust = FALSE)
+#' results
+#' # Run tests for single mediators and v2 algorithm
+#' results = cit.bp(L, G, T)
+#' results
+#'
+#' results = cit.bp(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.bp(L, G, T, C)
+#' results
+#'
+#' results = cit.bp(L, G, T, C, n.perm=5)
+#' results
+#'
+#' # Errors for multiple mediators.
+#' e1 = matrix(rnorm(ss * 3), ncol=3)
+#' e2 = matrix(rnorm(ss * 3), ncol=3)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices for multiple mediators
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=3)
+#' T = matrix(.3*G + e2, ncol=3)
+#' T <- rowSums(T)
+#' T = ifelse( T > median(T), 1, 0 )
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests for multiple mediators and v1 algorithm
+#' results = cit.bp(L, G, T, robust = FALSE)
+#' results
+#'
+#' results = cit.bp(L, G, T, perm.index=perm.index, n.perm=5, robust = FALSE)
+#' results
+#'
+#' results = cit.bp(L, G, T, C, robust = FALSE)
+#' results
+#'
+#' results = cit.bp(L, G, T, C, n.perm=5, robust = FALSE)
+#' results
+#' # Run tests for multiple mediators and v2 algorithm
+#' results = cit.bp(L, G, T)
+#' results
+#'
+#' results = cit.bp(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.bp(L, G, T, C)
+#' results
+#'
+#' results = cit.bp(L, G, T, C, n.perm=5)
+#' results
+#'
 #' @export
-cit.cp = function(L,
+cit.bp = function(L,
+                  G,
+                  T,
+                  C = NULL,
+                  maxit = 10000,
+                  n.perm = 0,
+                  perm.index = NULL,
+                  rseed = NULL,
+                  robust = TRUE
+) {
+  if(ncol(G) == 1){
+    if(robust){
+      return(cit.bp.v2(L, G, T, C, maxit, n.perm, perm.index, rseed))
+    }
+    else{
+      return(cit.bp.v1(L, G, T, C, maxit, n.perm, perm.index, rseed))
+    }
+  }
+  else{
+    if(robust){
+      return(cit.bp.m.v2(L, G, T, C, maxit, n.perm, perm.index, rseed))
+    }
+    else{
+      return(cit.bp.m.v1(L, G, T, C, maxit, n.perm, perm.index, rseed))
+    }
+  }
+} # End cit.bp function
+
+
+# Causal Inference Test for a Continuous Outcome in Version 1
+
+#' Causal Inference Test for a Continuous Outcome in Version 1
+#'
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+#'
+#' @usage
+#' cit.cp.v1(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Continuous vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#'
+#' @details Increasing maxit will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true.  If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp.v1 tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors
+#' e1 = matrix(rnorm(ss), ncol=1)
+#' e2 = matrix(rnorm(ss), ncol=1)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
+#' T = matrix(.3*G + e2, ncol=1)
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests
+#' results = cit.cp.v1(L, G, T)
+#' results
+#'
+#' results = cit.cp.v1(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.cp.v1(L, G, T, C)
+#' results
+#'
+#' results = cit.cp.v1(L, G, T, C, n.perm=5)
+#' results
+#'
+#' @export
+cit.cp.v1 = function(L,
                   G,
                   T,
                   C = NULL,
@@ -1399,7 +2141,7 @@ cit.cp = function(L,
                   rseed = NULL) {
   permit = 1000
   if(is.null(rseed)){
-    rseed=100
+    rseed=as.integer(Sys.time())
   }
   if(is.null(perm.index) && n.perm!=0 ){
     set.seed(rseed)
@@ -1459,7 +2201,11 @@ cit.cp = function(L,
     if (aa != 2)
       stop("dim(G)[2] + dim(T)[2]  must equal 2")
 
-    pval = pval1 = pval2 = pval3 = pval4 = 1.0 # output component p-values
+    pval=1.0
+    pval1=1.0
+    pval2=1.0
+    pval3=1.0
+    pval4=1.0# output component p-values
     ntest = length(pval)
     nrow = dim(L)[1]
     ncol = dim(L)[2]
@@ -1530,7 +2276,12 @@ cit.cp = function(L,
       stop("dim(G)[2] + dim(T)[2]  must equal 2")
 
     trios = 0
-    pval = pval1 = pval2 = pval3 = pval4 = rep(1.0, (n.perm + 1)) # output component p-values
+    pval=rep(1.0, (n.perm +1))
+    pval1=rep(1.0, (n.perm +1))
+    pval2=rep(1.0, (n.perm +1))
+    pval3=rep(1.0, (n.perm +1))
+    pval4=rep(1.0, (n.perm +1))# output component p-values
+
     nrow = dim(L)[1]
     ncol = dim(L)[2]
 
@@ -1624,33 +2375,75 @@ cit.cp = function(L,
 
   return(rslts)
 
-} # End cit.cp function
+} # End cit.cp.v1 function
 
-# CIT for continuous outcome and permutation results, null is the empirical distribution for pvalues 1-3 and independence for p-value 4.
-# Input:
-#   L: vector or nxp matrix of continuous instrumental variables. If trios not equal to NULL then L includes a single instrumental variable for each test. If trios=NULL then L can be a vector, matrix or dataframe representing just one instrumental variable or alternatively a set of instrumental variables that jointly may be mediated by G.
-#   G: vector or nxp matrix (if trios=NULL then G must be a single variable) of candidate causal mediators.
-#   T: vector or nxp matrix of traits (if trios=NULL then T must be a single variable)
-#   trios: A matrix or dataframe of three columns. Each row represents a planned test to be conducted
-#          and the number of rows is equal to the total number of tests. The first column is an
-#          indicator for the column in L, the second is an indicator for the column in G, and the third
-#          is an indicator for the column in T. If trios not equal to NULL, then L, G, and T must be matrices or dataframes all of the same dimensions.
+# Causal Inference Test for a Continuous Outcome in Version 2
 
-# apply .v2 modification, testing H2 using non-central chi-square
-
-#' Do CIT on continuous output with version 2
+#' Causal Inference Test for a Continuous Outcome in Version 2
 #'
-#' This function do CIT on continuous output with version 2
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
-#' @param  L A numeric vector
-#' @param  G A numeric vector
-#' @param  T A numeric vector
-#' @param  C A numeric vector
-#' @param  maxit A integer
-#' @param  n.perm A integer
-#' @param  perm.index a dataframe
-#' @param  rseed A number for seed.
-#' @return A data frame of pvalue
+#' @usage
+#' cit.cp.v2(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Continuous vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#'
+#' @details Increasing maxit will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true.  If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors
+#' e1 = matrix(rnorm(ss), ncol=1)
+#' e2 = matrix(rnorm(ss), ncol=1)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
+#' T = matrix(.3*G + e2, ncol=1)
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests
+#' results = cit.cp.v2(L, G, T)
+#' results
+#'
+#' results = cit.cp.v2(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.cp.v2(L, G, T, C)
+#' results
+#'
+#' results = cit.cp.v2(L, G, T, C, n.perm=5)
+#' results
+#'
 #' @export
 cit.cp.v2 = function(L,
                      G,
@@ -1663,7 +2456,7 @@ cit.cp.v2 = function(L,
   permit = 1000
 
   if(is.null(rseed)){
-    rseed=100
+    rseed=as.integer(Sys.time())
   }
   if(is.null(perm.index) && n.perm!=0 ){
     set.seed(rseed)
@@ -2008,22 +2801,455 @@ cit.cp.v2 = function(L,
 } # End cit.cp.v2 function
 
 
-# CIT version 2, continuous outcome w/ multiple mediators possible permutations
+# Causal Inference Test for multiple mediators and a Continuous Outcome in Version 1
 
-#' Do CIT on continuous output with multiple mediators and version 2
+#' Causal Inference Test for multiple mediators and a Continuous Outcome in Version 1
 #'
-#' This function do CIT on continuous output with multiple mediators and version 2
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
-#' @param  L A numeric vector
-#' @param  G A numeric vector
-#' @param  T A numeric vector
-#' @param  C A numeric vector
-#' @param  maxit A integer
-#' @param  n.perm A integer
-#' @param  perm.index A dataframe
-#' @param  rseed A number for seed.
-#' @param  v2 A bool for whether use v2
-#' @return A data frame of pvalue
+#' @usage
+#' cit.cp.m.v1(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Continuous vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#'
+#' @details Increasing maxit will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true.  If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors
+#' e1 = matrix(rnorm(ss * 3), ncol=3)
+#' e2 = matrix(rnorm(ss * 3), ncol=3)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=3)
+#' T = matrix(.3*G + e2, ncol=3)
+#' T <- rowSums(T)
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests
+#' results = cit.cp.m.v1(L, G, T)
+#' results
+#'
+#' results = cit.cp.m.v1(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.cp.m.v1(L, G, T, C)
+#' results
+#'
+#' results = cit.cp.m.v1(L, G, T, C, n.perm=5)
+#' results
+#'
+#' @export
+cit.cp.m.v1 = function(L,
+                       G,
+                       T,
+                       C = NULL,
+                       maxit = 10000,
+                       n.perm = 0,
+                       perm.index = NULL,
+                       rseed = NULL) {
+  permit = 1000
+  if(is.null(rseed)){
+    rseed=as.integer(Sys.time())
+  }
+  if(is.null(perm.index) && n.perm!=0 ){
+    set.seed(rseed)
+    perm.index <- replicate(n.perm, sample(length(T)))
+  }
+
+  if (!is.null(perm.index)) {
+    n.perm = ncol(perm.index)
+    perm.index = as.matrix(perm.index)
+    perm.index = perm.index - 1
+  }
+
+  if (is.vector(L)) {
+    L = matrix(L, ncol = 1)
+  } else {
+    L = as.matrix(L)
+  }
+  if (is.vector(G)) {
+    G = matrix(G, ncol = 1)
+  } else {
+    G = as.matrix(G)
+  }
+  if (is.vector(T)) {
+    T = matrix(T, ncol = 1)
+  } else {
+    T = as.matrix(T)
+  }
+  if (!is.null(C)) {
+    if (is.vector(C)) {
+      C = matrix(C, ncol = 1)
+    } else {
+      C = as.matrix(C)
+    }
+  }
+
+  aa = nrow(L) == nrow(T)
+  if (!aa)
+    stop("Error: rows of L must equal rows of T.")
+  aa = nrow(G) == nrow(T)
+  if (!aa)
+    stop("Error: rows of G must equal rows of T.")
+  if (!is.null(C)) {
+    aa = nrow(C) == nrow(T)
+    if (!aa)
+      stop("Error: rows of C must equal rows of T.")
+  }
+
+
+  L = ms_f(L)
+  G = ms_f(G)
+  T = ms_f(T)
+  if (!is.null(C))
+    C = ms_f(C)
+
+  colnames(T) = "T"
+  colnames(G) = paste("G", 1:ncol(G), sep = "")
+  colnames(L) = paste("L", 1:ncol(L), sep = "")
+  if (!is.null(C))
+    colnames(C) = paste("C", 1:ncol(C), sep = "")
+
+  ## Remove missing
+  #tmp = na.exclude(cbind(T, L, G, C))
+  #if (is.null(C)) {
+  #  names(tmp) = c("T", colnames(L), colnames(G))
+  #} else {
+  #  names(tmp) = c("T", colnames(L), colnames(G))
+  #}
+  #T = as.matrix(tmp[, "T"])
+  #L = as.matrix(tmp[, colnames(L)])
+  #G = as.matrix(tmp[, colnames(G)])
+  #if (!is.null(C))
+  #  C = as.matrix(tmp[, colnames(C)])
+  #rm(tmp)
+
+  df.C = 0
+  if (!is.null(C))
+    df.C = ncol(C)
+  nobs = dim(T)[1]
+  df.L = dim(L)[2]
+  df.G = dim(G)[2]
+
+  pval=1.0
+  pval1=1.0
+  pval2=1.0
+  pval3=1.0
+  pval4=1.0
+  pval3nc=1.0 # output component p-values
+
+  # if( n.resampl < n.perm ) n.resampl = n.perm
+  if (!is.null(C)) {
+    mydat = as.data.frame(cbind(L, G, T, C))
+  } else
+    mydat = as.data.frame(cbind(L, G, T))
+  for (i in 1:ncol(mydat))
+    mydat[, i] = as.numeric(mydat[, i])
+  L.nms = paste("L", 1:ncol(L), sep = "")
+  G.nms = paste("G", 1:ncol(G), sep = "")
+  C.nms = NULL
+  if (!is.null(C))
+    C.nms = paste("C", 1:ncol(C), sep = "")
+  names(mydat) = c(L.nms, G.nms, "T", C.nms)
+
+  if (n.perm == 0) {
+    if (is.null(C)) {
+      citbinm_linear(
+        as.double(L),
+        as.double(G),
+        as.double(T),
+        as.integer(maxit),
+        as.integer(nobs),
+        as.integer(df.L),
+        as.integer(df.G),
+        as.double(pval1),
+        as.double(pval2),
+        as.double(pval4),
+        as.double(pval3nc),
+        as.integer(rseed)
+
+      )
+      df1 = df.L
+      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
+
+      fncp = 0
+
+      # p-value, p3: G ~ L|T
+      p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
+
+    } else {
+      citbinmcvr_linear(
+        as.double(L),
+        as.double(G),
+        as.double(T),
+        as.double(C),
+        as.integer(maxit),
+        as.integer(nobs),
+        as.integer(df.L),
+        as.integer(df.G),
+        as.integer(df.C),
+        as.double(pval1),
+        as.double(pval2),
+        as.double(pval4),
+        as.double(pval3nc),
+        as.integer(rseed)
+
+      )
+      df1 = df.L
+      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
+
+      fncp = 0
+
+      # p-value, p3: G ~ L|T
+      p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
+
+    } # End else is null C
+
+    ntest = 1
+    rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
+    names(rslts) = c("p_cit",
+                     "p_TassocL",
+                     "p_TassocGgvnL",
+                     "p_GassocLgvnT",
+                     "p_LindTgvnG")
+    rslts[1, "p_TassocL"] = pval1
+    rslts[1, "p_TassocGgvnL"] = pval2
+    rslts[1, "p_GassocLgvnT"] = p3
+    rslts[1, "p_LindTgvnG"] = pval4
+    rslts[1, "p_cit"] = max(rslts[1, c("p_TassocL",
+                                       "p_TassocGgvnL",
+                                       "p_GassocLgvnT",
+                                       "p_LindTgvnG")])
+
+  } # End if n.perm == 0
+
+  if (n.perm > 0) {
+    if (is.null(perm.index)) {
+      perm.index = matrix(NA, nrow = nrow(L), ncol = n.perm)
+      for (j in 1:n.perm)
+        perm.index[, j] = sample(1:nrow(L))
+    }
+    pval=rep(1.0, (n.perm +1))
+    pval1=rep(1.0, (n.perm +1))
+    pval2=rep(1.0, (n.perm +1))
+    pval3=rep(1.0, (n.perm +1))
+    pval4=rep(1.0, (n.perm +1))
+    pval3nc=rep(1.0, (n.perm +1)) # output component p-values
+    if (is.null(rseed))
+      rseed = ceiling(runif(1) * 10000000)
+    set.seed(rseed)
+
+    if (is.null(C)) {
+      citbinmp_linear(
+        as.double(L),
+        as.double(G),
+        as.double(T),
+        as.integer(maxit),
+        as.integer(permit),
+        as.integer(n.perm),
+        as.integer(nobs),
+        as.integer(df.L),
+        as.integer(df.G),
+        as.double(pval1),
+        as.double(pval2),
+        as.double(pval4),
+        as.double(pval3nc),
+        as.integer(perm.index),
+        as.integer(rseed)
+
+      )
+      df1 = df.L
+      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
+      G.nc = qf(pval3nc,
+                df1 = df1,
+                df2 = df2,
+                lower.tail = FALSE)
+      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
+      for (j in 1:length(fncp)) {
+        fncp[j] = 0
+      }
+
+      # p-value, p3: G ~ L|T
+      p3 = rep(1, length(fncp))
+      for (j in 1:length(fncp)) {
+        ind.perm = 1:nrow(mydat)
+        if (j > 1)
+          ind.perm = sample(1:nrow(mydat))
+        tmpdat = mydat
+        tmpdat[, L.nms] = mydat[ind.perm, L.nms]
+        p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, "T"], fncp[j])
+        rm(tmpdat)
+      }
+      pval3 = p3
+
+    } else {
+      citbinmpcvr_linear(
+        as.double(L),
+        as.double(G),
+        as.double(T),
+        as.double(C),
+        as.integer(maxit),
+        as.integer(permit),
+        as.integer(n.perm),
+        as.integer(nobs),
+        as.integer(df.L),
+        as.integer(df.G),
+        as.integer(df.C),
+        as.double(pval1),
+        as.double(pval2),
+        as.double(pval4),
+        as.double(pval3nc),
+        as.integer(perm.index),
+        as.integer(rseed)
+
+      )
+      df1 = df.L
+      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
+      G.nc = qf(pval3nc,
+                df1 = df1,
+                df2 = df2,
+                lower.tail = FALSE)
+      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
+      for (j in 1:length(fncp)) {
+        fncp[j] = 0
+      }
+
+      # p-value, p3: G ~ L|T
+      p3 = rep(1, length(fncp))
+      for (j in 1:length(fncp)) {
+        ind.perm = 1:nrow(mydat)
+        if (j > 1)
+          ind.perm = sample(1:nrow(mydat))
+        tmpdat = mydat
+        tmpdat[, L.nms] = mydat[ind.perm, L.nms]
+        p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, "T"], fncp[j])
+        rm(tmpdat)
+      }
+      pval3 = p3
+
+    } # End else is null covar and perm.imat
+
+    rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
+    names(rslts) = c("perm",
+                     "p_cit",
+                     "p_TassocL",
+                     "p_TassocGgvnL",
+                     "p_GassocLgvnT",
+                     "p_LindTgvnG")
+    for (perm in 0:n.perm) {
+      rslts[perm + 1, "perm"] = perm
+      rslts[perm + 1, "p_cit"] = max(c(pval1[perm + 1], pval2[perm +1], pval3[perm + 1], pval4[perm + 1]))
+      rslts[perm + 1, "p_TassocL"] = pval1[perm + 1]
+      rslts[perm + 1, "p_TassocGgvnL"] = pval2[perm + 1]
+      rslts[perm + 1, "p_GassocLgvnT"] = p3[perm + 1]
+      rslts[perm + 1, "p_LindTgvnG"] = pval4[perm + 1]
+    }
+  } # End if perm > 0
+
+  return(rslts)
+
+} # End cit.cp.m.v1 function
+
+
+# Causal Inference Test for multiple mediators and a Continuous Outcome in Version 2
+
+#' Causal Inference Test for multiple mediators and a Continuous Outcome in Version 2
+#'
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+#'
+#' @usage
+#' cit.cp.m.v2(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Continuous vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#'
+#' @details Increasing maxit will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true.  If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors
+#' e1 = matrix(rnorm(ss * 3), ncol=3)
+#' e2 = matrix(rnorm(ss * 3), ncol=3)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=3)
+#' T = matrix(.3*G + e2, ncol=3)
+#' T <- rowSums(T)
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests
+#' results = cit.cp.m.v2(L, G, T)
+#' results
+#'
+#' results = cit.cp.m.v2(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.cp.m.v2(L, G, T, C)
+#' results
+#'
+#' results = cit.cp.m.v2(L, G, T, C, n.perm=5)
+#' results
+#'
 #' @export
 cit.cp.m.v2 = function(L,
                        G,
@@ -2032,11 +3258,10 @@ cit.cp.m.v2 = function(L,
                        maxit = 10000,
                        n.perm = 0,
                        perm.index = NULL,
-                       rseed = NULL,
-                       v2 = TRUE) {
+                       rseed = NULL) {
   permit = 1000
   if(is.null(rseed)){
-    rseed=100
+    rseed=as.integer(Sys.time())
   }
   if(is.null(perm.index) && n.perm!=0 ){
     set.seed(rseed)
@@ -2168,7 +3393,7 @@ cit.cp.m.v2 = function(L,
                 df2 = df2,
                 lower.tail = FALSE)
       fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      if (fncp < 0 | !v2)
+      if (fncp < 0)
         fncp = 0
 
       # p-value, p3: G ~ L|T
@@ -2203,7 +3428,7 @@ cit.cp.m.v2 = function(L,
                 df2 = df2,
                 lower.tail = FALSE)
       fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      if (fncp < 0 | !v2)
+      if (fncp < 0)
         fncp = 0
 
       # p-value, p3: G ~ L|T
@@ -2220,7 +3445,7 @@ cit.cp.m.v2 = function(L,
                      "p_LindTgvnG")
     rslts[1, "p_TassocL"] = pval1
     rslts[1, "p_TassocGgvnL"] = pval2
-    rslts[1, "p_GassocLgvnT"] = pval3
+    rslts[1, "p_GassocLgvnT"] = p3
     rslts[1, "p_LindTgvnG"] = pval4
     rslts[1, "p_cit"] = max(rslts[1, c("p_TassocL",
                                        "p_TassocGgvnL",
@@ -2230,6 +3455,11 @@ cit.cp.m.v2 = function(L,
   } # End if n.perm == 0
 
   if (n.perm > 0) {
+    if (is.null(perm.index)) {
+      perm.index = matrix(NA, nrow = nrow(L), ncol = n.perm)
+      for (j in 1:n.perm)
+        perm.index[, j] = sample(1:nrow(L))
+    }
     pval=rep(1.0, (n.perm +1))
     pval1=rep(1.0, (n.perm +1))
     pval2=rep(1.0, (n.perm +1))
@@ -2270,7 +3500,7 @@ cit.cp.m.v2 = function(L,
                 lower.tail = FALSE)
       fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
       for (j in 1:length(fncp)) {
-        if (fncp[j] < 0 | !v2)
+        if (fncp[j] < 0)
           fncp[j] = 0
       }
 
@@ -2320,7 +3550,7 @@ cit.cp.m.v2 = function(L,
                 lower.tail = FALSE)
       fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
       for (j in 1:length(fncp)) {
-        if (fncp[j] < 0 | !v2)
+        if (fncp[j] < 0)
           fncp[j] = 0
       }
 
@@ -2359,3 +3589,155 @@ cit.cp.m.v2 = function(L,
   return(rslts)
 
 } # End cit.cp.m.v2 function
+
+
+
+
+# Causal Inference Test for a Continuous Outcome
+
+#' Causal Inference Test for a Continuous Outcome
+#'
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+#'
+#' @usage
+#' cit.cp(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robust=TRUE)
+#'
+#' @param L Vector or nxp design matrix representing the instrumental variable(s).
+#' @param G Continuous vector representing the potential causal mediator.
+#' @param T Continuous vector representing the clinical trait or outcome of interest.
+#' @param C Vector or nxp design matrix representing adjustment covariates.
+#' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
+#' @param n.perm Number of permutations for each component test if greater than 0.
+#' @param perm.index An n x n.perm matrix of permutation indices.
+#' @param rseed Seed for reproducible permutations.
+#' @param robust True for v2 algorithm and False for v1 algorithm
+#'
+#' @details Increasing maxit will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true.  If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
+#'
+#' @return
+#' A dataframe which includes the following columns:
+#' \item{perm}{Indicator for permutation results. Zero indicates that the data were not permuted and subsequent rows include an integer greater than zero for each permutation conducted.}
+#' \item{p_cit}{CIT (omnibus) p-value}
+#' \item{p_TassocL}{component p-value for the test of association between T and L.}
+#' \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
+#' \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
+#' \item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+#'
+#' @references
+#' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
+#'
+#' @author
+#' Joshua Millstein, Mingzhi Ye
+#'
+#' @examples
+#' # Sample Size
+#' ss = 100
+#'
+#' # Errors for single mediators
+#' e1 = matrix(rnorm(ss), ncol=1)
+#' e2 = matrix(rnorm(ss), ncol=1)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices for single mediators
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
+#' T = matrix(.3*G + e2, ncol=1)
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests for single mediators and v1 algorithm
+#' results = cit.cp(L, G, T, robust = FALSE)
+#' results
+#'
+#' results = cit.cp(L, G, T, perm.index=perm.index, n.perm=5, robust = FALSE)
+#' results
+#'
+#' results = cit.cp(L, G, T, C, robust = FALSE)
+#' results
+#'
+#' results = cit.cp(L, G, T, C, n.perm=5, robust = FALSE)
+#' results
+#' # Run tests for single mediators and v2 algorithm
+#' results = cit.cp(L, G, T)
+#' results
+#'
+#' results = cit.cp(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.cp(L, G, T, C)
+#' results
+#'
+#' results = cit.cp(L, G, T, C, n.perm=5)
+#' results
+#'
+#' # Errors for multiple mediators.
+#' e1 = matrix(rnorm(ss * 3), ncol=3)
+#' e2 = matrix(rnorm(ss * 3), ncol=3)
+#'
+#' # Simulate genotypes, gene expression, covariates, and clinical trait matrices for multiple mediators
+#' L = matrix(rbinom(ss*3,2,.5), ncol=3)
+#' G = matrix(apply(.3*L, 1, sum) + e1, ncol=3)
+#' T = matrix(.3*G + e2, ncol=3)
+#' T <- rowSums(T)
+#' C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+#'
+#' n.perm = 5
+#' perm.index = matrix(NA, nrow=ss, ncol=n.perm)
+#' for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)
+#'
+#' # Run tests for multiple mediators and v1 algorithm
+#' results = cit.cp(L, G, T, robust = FALSE)
+#' results
+#'
+#' results = cit.cp(L, G, T, perm.index=perm.index, n.perm=5, robust = FALSE)
+#' results
+#'
+#' results = cit.cp(L, G, T, C, robust = FALSE)
+#' results
+#'
+#' results = cit.cp(L, G, T, C, n.perm=5, robust = FALSE)
+#' results
+#' # Run tests for multiple mediators and v2 algorithm
+#' results = cit.cp(L, G, T)
+#' results
+#'
+#' results = cit.cp(L, G, T, perm.index=perm.index, n.perm=5)
+#' results
+#'
+#' results = cit.cp(L, G, T, C)
+#' results
+#'
+#' results = cit.cp(L, G, T, C, n.perm=5)
+#' results
+#'
+#' @export
+cit.cp = function(L,
+                  G,
+                  T,
+                  C = NULL,
+                  maxit = 10000,
+                  n.perm = 0,
+                  perm.index = NULL,
+                  rseed = NULL,
+                  robust = TRUE
+) {
+  if(ncol(G) == 1){
+    if(robust){
+      return(cit.cp.v2(L, G, T, C, maxit, n.perm, perm.index, rseed))
+    }
+    else{
+      return(cit.cp.v1(L, G, T, C, maxit, n.perm, perm.index, rseed))
+    }
+  }
+  else{
+    if(robust){
+      return(cit.cp.m.v2(L, G, T, C, maxit, n.perm, perm.index, rseed))
+    }
+    else{
+      return(cit.cp.m.v1(L, G, T, C, maxit, n.perm, perm.index, rseed))
+    }
+  }
+} # End cit.cp function

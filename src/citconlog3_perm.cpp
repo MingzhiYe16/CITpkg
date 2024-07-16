@@ -26,14 +26,14 @@ Programmer: Joshua Millstein
 
 // [[Rcpp::export]]
 void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, int &nrow,
-	int &ncol, int &ncolc, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, int &maxit, int &permit, int &boots, Rcpp::NumericVector Pind, int &rseed)
+	int &ncol, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, int &maxit, int &permit, int &boots, Rcpp::NumericVector Pind, int &rseed)
 {
 	unsigned seed = rseed;
-	int rw, brw, cl, i, j, rind, df, df1, df2, npos, nperm, dncol, perm, firstloop;
+	int brw, i, j, rind, df, df1, df2, npos, nperm, dncol, firstloop;
 	int *bootind, *nposperm;
 	double rss2, rss3, rss5, F, pv, pvalind, pvp, tmp, rhs;
 	double *designmat, *phenovec, *pindep;
-	bool aa, bb, cc, converged, permute;
+	bool aa, bb, converged, permute;
 	const int posno = 20;
 	vector<vector<double> > LL;
 	vector<vector<int> > PP;
@@ -49,6 +49,7 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 	phenovec = new double[nrow];
 	pindep = new double[boots];
 
+
 	for(i = 0; i < boots; i++){
 		nposperm[ i ] = 0;
 	}
@@ -63,56 +64,57 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 	GetRNGstate();
 	permindvec.resize( nrow );
 
-	for(rw = 0; rw < nrow; rw++) {
+	for(int rw = 0; rw < nrow; rw++) {
 		LL[rw].resize( ncol );
 	}
 
-	for(cl = 0; cl < ncol; cl++) {
-		for(rw = 0; rw < nrow; rw++) {
+	for(int cl = 0; cl < ncol; cl++) {
+		for(int rw = 0; rw < nrow; rw++) {
 			LL[rw][cl] = L[rw + nrow * cl];
 		}
 	}
 
-	for(rw = 0; rw < nrow; rw++) {
+	for(int rw = 0; rw < nrow; rw++) {
 		PP[rw].resize( boots );
 	}
 
-	for(cl = 0; cl < boots; cl++) {
-		for(rw = 0; rw < nrow; rw++) {
+	for(int cl = 0; cl < boots; cl++) {
+		for(int rw = 0; rw < nrow; rw++) {
 			PP[rw][cl] = Pind[rw + nrow * cl];
 		}
 	}
 
-	for(rw = 0; rw < nrow; rw++) {
+	for(int rw = 0; rw < nrow; rw++) {
 		permindvec[ rw ] = rw;
 	}
 
 	// This vector is reused throughout the program
 	Gp = gsl_vector_alloc (nrow);
-
 	// begin permutation loop
-	for(perm = 0; perm < (boots + 1); perm++) {
+	for(int perm = 0; perm < (boots + 1); perm++) {
 
 		permute = perm > 0;
-		for(rw = 0; rw < nrow; rw++) {
-			bootind[ rw ]  = ( permute ) ? (PP[ rw ][ perm - 1 ] - 1) : rw;
+		for(int rw = 0; rw < nrow; rw++) {
+			bootind[ rw ]  = ( permute ) ? (PP[ rw ][ perm - 1 ] ) : rw;
 		}
+
 
 		// fit model T ~ L
 		// create design matrix with no missing values
 		dncol = 1 + ncol;                               // intercept + multiple L variable
 		rind = 0;
-		for(rw = 0; rw < nrow; rw++) {
+
+		for(int rw = 0; rw < nrow; rw++) {
 			brw = bootind[ rw ] ;
-			aa = 1;
-			aa = ( T[ rw ] != -9999 ) ? aa : 0;
-			for(cl = 0; cl < ncol; cl++) {
-                  aa = ( LL[ brw ][ cl ]  != -9999 ) ? aa : 0;
+			aa = true;
+			aa = ( T[ rw ] != -9999 ) ? aa : false;
+			for(int cl = 0; cl < ncol; cl++) {
+                  aa = ( LL[ brw ][ cl ]  != -9999 ) ? aa : false;
 			}
 			if( aa ){
 				phenovec[ rind ] = T[ rw ];
-				designmat[ rind * dncol  ] = 1;      // intercept
-				for(cl = 0; cl < ncol; cl++) {
+				designmat[ rind * dncol  ] = 1.0;      // intercept
+				for(int cl = 0; cl < ncol; cl++) {
                   designmat[ rind * dncol + 1 + cl  ]  = LL[ brw ][ cl ];
 				}
 				rind++;
@@ -121,25 +123,27 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 
 		df = ncol;
 		converged = logisticReg( pv, phenovec, designmat, rind, dncol, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if (!converged) {
+			Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
+		}
 		pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();
 		pval1[perm] = pv;  // pval for T ~ L, 9 if it did not converge, p1
 
 		// fit model T ~ L + G
 		dncol = 1 + ncol + 1;
 		rind = 0;
-		for(rw = 0; rw < nrow; rw++) {
+		for(int rw = 0; rw < nrow; rw++) {
 			brw = bootind[ rw ] ;
 			aa = 1;
 			aa = ( T[ rw ] != -9999 ) ? aa : 0;
-			for(cl = 0; cl < ncol; cl++) {
+			for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ rw ][ cl ]  != -9999 ) ? aa : 0;
 			}
 			aa = ( G[ brw ] != -9999 ) ? aa : 0;
 			if( aa ){
 				phenovec[ rind ] = T[ rw ];
 				designmat[ rind * dncol  ] = 1;      // intercept
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                   designmat[ rind * dncol + 1 + cl  ]  = LL[ rw ][ cl ];
 				}
 				designmat[ rind * dncol + 1 + ncol  ] = G[ brw ];
@@ -149,18 +153,20 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 
 		df = 1;
 		converged = logisticReg( pv, phenovec, designmat, rind, dncol, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if (!converged) {
+			Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
+		}
 		pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();
 		pval2[perm]  = pv;  // pval for T ~ G|L, 9 if it did not converge, p2
 
 		// fit model G ~ T
 		dncol = 2;
 		rind = 0;
-		for(rw = 0; rw < nrow; rw++) {
+		for(int rw = 0; rw < nrow; rw++) {
 			brw = bootind[ rw ] ;
 			aa = 1;
 			aa = ( T[ rw ] != -9999 ) ? aa : 0;
-			for(cl = 0; cl < ncol; cl++) {
+			for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ brw ][ cl ]  != -9999 ) ? aa : 0;
 			}
 			aa = ( G[ rw ] != -9999 ) ? aa : 0;
@@ -171,13 +177,12 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 
 		X = gsl_matrix_alloc(rind, dncol);
 		Gm = gsl_vector_alloc (rind);
-
 		rind = 0;
-		for(rw = 0; rw < nrow; rw++) {
+		for(int rw = 0; rw < nrow; rw++) {
 			brw = bootind[ rw ] ;
 			aa = 1;
 			aa = ( T[ rw ] != -9999 ) ? aa : 0;
-			for(cl = 0; cl < ncol; cl++) {
+			for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ brw ][ cl ]  != -9999 ) ? aa : 0;
 			}
 			aa = ( G[ rw ] != -9999 ) ? aa : 0;
@@ -202,11 +207,11 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 		// fit model G ~ L + T
 		dncol = 1 + ncol + 1;
 		rind = 0;
-		for(rw = 0; rw < nrow; rw++) {
+		for(int rw = 0; rw < nrow; rw++) {
 			brw = bootind[ rw ] ;
 			aa = 1;
 			aa = ( T[ rw ] != -9999 ) ? aa : 0;
-			for(cl = 0; cl < ncol; cl++) {
+			for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ brw ][ cl ]  != -9999 ) ? aa : 0;
 			}
 			aa = ( G[ rw ] != -9999 ) ? aa : 0;
@@ -218,18 +223,19 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 		X = gsl_matrix_alloc(rind, dncol);
 		Gm = gsl_vector_alloc (rind);
 
+			
 		rind = 0;
-		for(rw = 0; rw < nrow; rw++) {
+		for(int rw = 0; rw < nrow; rw++) {
 			brw = bootind[ rw ] ;
 			aa = 1;
 			aa = ( T[ rw ] != -9999 ) ? aa : 0;
-			for(cl = 0; cl < ncol; cl++) {
+			for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ brw ][ cl ]  != -9999 ) ? aa : 0;
 			}
 			aa = ( G[ rw ] != -9999 ) ? aa : 0;
 			if( aa ){
 				gsl_matrix_set(X, rind, 0, 1.0);      // intercept
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                   gsl_matrix_set(X, rind, cl + 1, LL[ brw ][ cl ] );
 		     	}
 				gsl_matrix_set(X, rind, 1 + ncol, T[ rw ]);
@@ -253,15 +259,16 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 		pv = gsl_cdf_fdist_Q(F, df1, df2);
 		pval3[perm]  = pv; // pval for G ~ L|T, p3
 
+
 		// fit model T ~ G + L
 		if( perm == 0 ){
 			dncol = 1 + 1 + ncol;
 			rind = 0;
-			for(rw = 0; rw < nrow; rw++) {
+			for(int rw = 0; rw < nrow; rw++) {
 				brw = bootind[ rw ] ;
 				aa = 1;
 				aa = ( T[ rw ] != -9999 ) ? aa : 0;
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ rw ][ cl ]  != -9999 ) ? aa : 0;
 				}
 				aa = ( G[ brw ] != -9999 ) ? aa : 0;
@@ -269,7 +276,7 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 					phenovec[ rind ] = T[ rw ];
 					designmat[ rind * dncol  ] = 1;      // intercept
 					designmat[ rind * dncol + 1  ] = G[ brw ];
-					for(cl = 0; cl < ncol; cl++) {
+					for(int cl = 0; cl < ncol; cl++) {
                  	designmat[ rind * dncol + 2 + cl  ]  = LL[ rw ][ cl ];
 					}
 					rind++;
@@ -278,16 +285,18 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 
 			df = ncol;
 			converged = logisticReg( pv, phenovec, designmat, rind, dncol, df );
-			if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+			if (!converged) {
+			Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
+		}
 			pvalind = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G
 
 			// fit model G ~ L
 			dncol = 1 + ncol;
 			rind = 0;
-			for(rw = 0; rw < nrow; rw++) {
+			for(int rw = 0; rw < nrow; rw++) {
 				aa = 1;
 				aa = ( G[ rw ] != -9999 ) ? aa : 0;
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ rw ][ cl ]  != -9999 ) ? aa : 0;
 				}
 				if( aa ){
@@ -299,15 +308,15 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 			Gm = gsl_vector_alloc (rind);
 
 			rind = 0;
-			for(rw = 0; rw < nrow; rw++) {
+			for(int rw = 0; rw < nrow; rw++) {
 				aa = 1;
 				aa = ( G[ rw ] != -9999 ) ? aa : 0;
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ rw ][ cl ]  != -9999 ) ? aa : 0;
 				}
 				if( aa ){
 					gsl_matrix_set(X, rind, 0, 1.0);      // intercept
-					for(cl = 0; cl < ncol; cl++) {
+					for(int cl = 0; cl < ncol; cl++) {
                  	gsl_matrix_set(X, rind, cl + 1, LL[ rw ][ cl ] );
 		     		}
 					gsl_vector_set(Gm, rind, G[rw]);
@@ -323,15 +332,16 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 			gsl_matrix_free(cov);
 
 			// residuals for G ~ L
-			for(rw = 0; rw < nrow; rw++) {
+
+			for(int rw = 0; rw < nrow; rw++) {
 				aa = 1;
 				aa = ( G[ rw ] != -9999 ) ? aa : 0;
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                  aa = ( LL[ rw ][ cl ]  != -9999 ) ? aa : 0;
 				}
 				if( aa ){
 					rhs = gsl_vector_get(c, 0); // intercept
-					for(cl = 0; cl < ncol; cl++) {
+					for(int cl = 0; cl < ncol; cl++) {
                   rhs += gsl_vector_get(c, (cl+1)) * LL[ rw ][ cl ];
 		     		}
 					gpred.push_back(rhs);
@@ -343,6 +353,7 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 					gresid.push_back(-9999);
 				}
 			} // end rw loop
+
 			gsl_matrix_free(X);
 			gsl_vector_free(Gm);
 			gsl_vector_free (c);
@@ -355,7 +366,8 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 			// compute G* based on marginal L effects and permuted residuals
 			// Gp = gsl_vector_alloc (nrow);
 
-			for(rw = 0; rw < nrow; rw++) {
+
+			for(int rw = 0; rw < nrow; rw++) {
 				brw = bootind[ rw ];
 				aa = 1;
 				aa = ( gpred[rw] != -9999 ) ? aa : 0;
@@ -372,10 +384,11 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 			// fit model T ~ G* + L to test L
 			dncol = 1 + 1 + ncol;
 			rind = 0;
-			for(rw = 0; rw < nrow; rw++) {
+
+			for(int rw = 0; rw < nrow; rw++) {
 				aa = 1;
 				aa = ( T[ rw ] != -9999 ) ? aa : 0;
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ rw ][ cl ]  != -9999 ) ? aa : 0;
 				}
 				aa = ( gsl_vector_get(Gp, rw ) != -9999 ) ? aa : 0;
@@ -383,16 +396,18 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 					phenovec[ rind ] = T[ rw ];
 					designmat[ rind * dncol  ] = 1;      // intercept
 					designmat[ rind * dncol + 1  ] = gsl_vector_get(Gp, rw );
-					for(cl = 0; cl < ncol; cl++) {
+
+					for(int cl = 0; cl < ncol; cl++) {
                   		designmat[ rind * dncol + 2 + cl  ]  = LL[ rw ][ cl ];
 					}
 					rind++;
 				} // end if aa
 			} // end for rw
-
 			df = ncol;
 			converged = logisticReg( pvp, phenovec, designmat, rind, dncol, df );
-			if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+			if (!converged) {
+			Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
+		}
 			pindep[ perm - 1 ] = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G*
 
 		} // end if perm > 0
@@ -404,7 +419,8 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 		// randomly permute residuals
 		
 		shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );
-		for(rw = 0; rw < nrow; rw++) {
+		seed+=1;
+		for(int rw = 0; rw < nrow; rw++) {
 			brw = bootind[ rw ];
 			aa = 1;
 			aa = ( gpred[rw] != -9999 ) ? aa : 0;
@@ -419,10 +435,10 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 		// fit model T ~ G* + L to test L
 		dncol = 1 + 1 + ncol;
 		rind = 0;
-		for(rw = 0; rw < nrow; rw++) {
+		for(int rw = 0; rw < nrow; rw++) {
 			aa = 1;
 			aa = ( T[ rw ] != -9999 ) ? aa : 0;
-			for(cl = 0; cl < ncol; cl++) {
+			for(int cl = 0; cl < ncol; cl++) {
           	aa = ( LL[ rw ][ cl ]  != -9999 ) ? aa : 0;
 			}
 			aa = ( gsl_vector_get(Gp, rw ) != -9999 ) ? aa : 0;
@@ -430,7 +446,7 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 				phenovec[ rind ] = T[ rw ];
 				designmat[ rind * dncol  ] = 1;      // intercept
 				designmat[ rind * dncol + 1  ] = gsl_vector_get(Gp, rw );
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                  designmat[ rind * dncol + 2 + cl  ]  = LL[ rw ][ cl ];
 				}
 				rind++;
@@ -439,7 +455,9 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 
 		df = ncol;
 		converged = logisticReg( pvp, phenovec, designmat, rind, dncol, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if (!converged) {
+			Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
+		}
 		pvp = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G*
 		if( pvp > pvalind ) npos++;
 
@@ -460,7 +478,8 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 			// randomly permute residuals
 			
 			shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );
-			for(rw = 0; rw < nrow; rw++) {
+			seed+=1;
+			for(int rw = 0; rw < nrow; rw++) {
 				brw = bootind[ rw ];
 				aa = 1;
 				aa = ( gpred[rw] != -9999 ) ? aa : 0;
@@ -475,10 +494,10 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 			// fit model T ~ G* + L to test L
 			dncol = 1 + 1 + ncol;
 			rind = 0;
-			for(rw = 0; rw < nrow; rw++) {
+			for(int rw = 0; rw < nrow; rw++) {
 				aa = 1;
 				aa = ( T[ rw ] != -9999 ) ? aa : 0;
-				for(cl = 0; cl < ncol; cl++) {
+				for(int cl = 0; cl < ncol; cl++) {
                   aa = ( LL[ rw ][ cl ]  != -9999 ) ? aa : 0;
 				}
 				aa = ( gsl_vector_get(Gp, rw ) != -9999 ) ? aa : 0;
@@ -486,7 +505,7 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 					phenovec[ rind ] = T[ rw ];
 					designmat[ rind * dncol  ] = 1;      // intercept
 					designmat[ rind * dncol + 1  ] = gsl_vector_get(Gp, rw );
-					for(cl = 0; cl < ncol; cl++) {
+					for(int cl = 0; cl < ncol; cl++) {
                   		designmat[ rind * dncol + 2 + cl  ]  = LL[ rw ][ cl ];
 					}
 					rind++;
@@ -495,7 +514,9 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 
 			df = ncol;
 			converged = logisticReg( pvp, phenovec, designmat, rind, dncol, df );
-			if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+			if (!converged) {
+			Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
+		}
 			pvp = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G*
 			if( pvp > pvalind ) npos++;
 
@@ -504,12 +525,12 @@ void citconlog3p( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVec
 			}
 
 			aa = npos < posno;
-			cc = nperm < ( maxit - 1 );
 			nperm++;
 		} // end 'while' permutation loop
 	} // end if boots == 0
 
-	for(perm = 0; perm < (boots + 1); perm++) {
+
+	for(int perm = 0; perm < (boots + 1); perm++) {
 		pv = ( perm == 0 ) ? 1.0 * npos / nperm : 1.0 * nposperm[ perm - 1 ] / nperm;
 
 		// To avoid a p-value = 0, make 0 p-values = 1/nperm

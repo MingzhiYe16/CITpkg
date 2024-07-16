@@ -33,7 +33,7 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 	double rss2, rss3, rss5, F, pv, pvp, tmp, rhs, maxp, testval;
 	double *designmat, *phenovec;
 	bool aa, bb, cc, dd, converged;
-	const int firstloop = 1000;
+	const int firstloop = 5000;
 	const int posno = 20;
 	const double alpha = .1;
 	vector<vector<double> > LL;
@@ -136,7 +136,7 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 		}
 		df = ncol;
 		converged = logisticReg( pv, phenovec, designmat, nobs, ip, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 		pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();
 		pvec.push_back( pv );  // pval for T ~ C + L, 9 if it did not converge, p1
 
@@ -155,7 +155,7 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 		
 		df = 1;
 		converged = logisticReg( pv, phenovec, designmat, nobs, stride, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 		pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();
 		pvec.push_back( pv );  // pval for T ~ G|L,C, 9 if it did not converge, p2
 
@@ -181,11 +181,15 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 			for(cl = 0; cl < ncol; cl++) {
                   gsl_matrix_set(X, rw, cl + 1, gsl_matrix_get (Lm, rw, cl));
 		     }
+			for(cl = ncol; cl < ncol + ncolc; cl++) {
+                  gsl_matrix_set(X, rw, cl + 1, gsl_matrix_get (Cm, rw, cl - ncol));
+		     }
 		     gsl_matrix_set(X, rw, ip, gsl_vector_get (Tm, rw)); 
 		}
 		c = gsl_vector_alloc (ip + 1);
 		cov = gsl_matrix_alloc (ip + 1, ip + 1);
 		work = gsl_multifit_linear_alloc (nobs, ip + 1);
+
 		gsl_multifit_linear (X, Gm, c, cov, &rss3, work);
 		gsl_multifit_linear_free (work);
 		gsl_matrix_free (X);
@@ -211,7 +215,7 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 		
 		df = ncol;
 		converged = logisticReg( pv, phenovec, designmat, nobs, stride, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 		pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G + C
 		pval3nc[0] = pv; // pvalue to be used for non-centrality parameter
 
@@ -250,7 +254,8 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 		for(i = 0; i < firstloop; i++){
 			// randomly permute residuals
             
-            shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );			
+            shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );	
+			seed+=1;		
 			// compute G* based on marginal L effects and permuted residuals
 			for(rw = 0; rw < nobs; rw++) {
 				gsl_vector_set(Gp, rw, gpred[rw] + gresid[rw] );
@@ -272,7 +277,7 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 		
 			df = ncol;
 			converged = logisticReg( pvp, phenovec, designmat, nobs, stride, df );
-			if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+			if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 			pvp = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G*
 			if( pvp > pv ) npos++;
 			
@@ -282,7 +287,7 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 		maxp = maxElementWithNan(pvec);
 		nperm = firstloop;
 		aa = npos < posno;
-		bb = maxp < alpha;
+		bb = maxp < alpha * 1.5;
 		cc = nperm < maxit;
 		testval = (double) (npos + 1) / nperm ;
 		dd = maxp < testval; // check that other component p-values are small
@@ -292,7 +297,8 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 				
 				// randomly permute residuals
 				
-				shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );				
+				shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );		
+				seed+=1;		
 				// compute G* based on marginal L effects and permuted residuals
 				for(rw = 0; rw < nobs; rw++) {
 					gsl_vector_set(Gp, rw, gpred[rw] + gresid[rw] );
@@ -314,7 +320,7 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 		
 				df = ncol;
 				converged = logisticReg( pvp, phenovec, designmat, nobs, stride, df );
-				if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+				if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 				pvp = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G*
 				if( pvp > pv ) npos++;
 				

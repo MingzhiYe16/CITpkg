@@ -44,7 +44,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
     double *designmat = NULL;
     double *phenovec = NULL;
     double *pindep = NULL;
-    bool aa, bb, cc, converged, permute;
+    bool aa, bb, converged, permute;
     const int posno = 20;
     vector<vector<double> > LL;
     vector<vector<double> > XX;
@@ -158,7 +158,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	    
 	    df = dfz;
 	    converged = linearRegCompare( pv, phenovec, designmat, rind, stride, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 	    pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();
 	    pval1[perm] = pv;  // pval for T ~ C + L, 9 if it did not converge, p1
 	    
@@ -196,7 +196,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	    
 	    df = dfx;
 	    converged = linearRegCompare( pv, phenovec, designmat, rind, stride, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 	    pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();
 	    pval2[perm] = pv;  // pval for T ~ G|L, 9 if it did not converge, p2
 	    
@@ -234,7 +234,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	    
 	    df = dfz;
 	    converged = linearRegCompare( pv, phenovec, designmat, rind, stride, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 	    pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|C,G 
 	    pval3nc[perm] = pv; // pvalue to be used for non-centrality parameter
 	    
@@ -377,7 +377,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	      
 	      df = dfz;
 	      converged = linearRegCompare( pvp, phenovec, designmat, rind, stride, df );
-		  if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		  if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 	      pindep[ perm - 1 ] = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G*
 	    } // end if perm > 0
     } // End perm loop
@@ -387,6 +387,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	    // randomly permute residuals
 		
 		shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );
+		seed+=1;
 	    for(rw = 0; rw < nobs; rw++) {
 	      aa = 1;
 	      for(xl = 0; xl < dfx; xl++) {
@@ -439,7 +440,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	      
 	      df = dfz;
 	      converged = linearRegCompare( pvp, phenovec, designmat, rind, stride, df );
-		  if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		  if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 	      pvp = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|C,G*
 	      if( pvp > pvalind ) npos++;
 	      
@@ -460,6 +461,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	      // randomly permute residuals
 		  
 		  shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );
+		  seed+=1;
 	      for(rw = 0; rw < nobs; rw++) {
 	        aa = 1;
 	        for(xl = 0; xl < dfx; xl++) {
@@ -512,7 +514,7 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	      
 	      df = dfz;
 	      converged = linearRegCompare( pvp, phenovec, designmat, rind, stride, df );
-		  if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		  if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 	      pvp = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|C,G*
 	      if( pvp > pvalind ) npos++;
 	      
@@ -521,7 +523,6 @@ void citbinmpcvr_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Num
 	      }
 	      
 	      aa = npos < posno;
-	      cc = nperm < ( maxit - 1 );
 	      nperm++;
 	    } // end 'while' permutation loop
 	  } // end if permnum == 0 

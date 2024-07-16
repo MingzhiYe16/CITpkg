@@ -113,7 +113,7 @@ void citconlog2_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nume
 
 		df = ncol;
 		converged = linearRegCompare( pv, phenovec, designmat, nobs, ip, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 		pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();
 		pvec.push_back( pv );  // pval for T ~ L, 9 if it did not converge, p1
 
@@ -129,7 +129,7 @@ void citconlog2_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nume
 
 		df = 1;
 		converged = linearRegCompare( pv, phenovec, designmat, nobs, stride, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 		pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();
 		pvec.push_back( pv );  // pval for T ~ G|L, 9 if it did not converge, p2
 
@@ -182,7 +182,7 @@ void citconlog2_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nume
 		}
 		df = ncol;
 		converged = linearRegCompare( pv, phenovec, designmat, nobs, stride, df );
-		if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+		if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 		pv = ( converged ) ? pv : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G
 
 		// fit model G ~ L
@@ -223,6 +223,7 @@ void citconlog2_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nume
             // unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 			
 			shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );
+			seed+=1;
 
 			// compute G* based on marginal L effects and permuted residuals
 			for(rw = 0; rw < nobs; rw++) {
@@ -242,7 +243,7 @@ void citconlog2_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nume
 
 			df = ncol;
 			converged = linearRegCompare( pvp, phenovec, designmat, nobs, stride, df );
-			if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+			if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 			pvp = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G*
 			if( pvp > pv ) npos++;
 
@@ -266,6 +267,7 @@ void citconlog2_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nume
 				// unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 				
 			    shuffle( gresid.begin(), gresid.end(), std::default_random_engine(seed) );
+				seed+=1;
 
 				// compute G* based on marginal L effects and permuted residuals
 				for(rw = 0; rw < nobs; rw++) {
@@ -285,7 +287,7 @@ void citconlog2_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nume
 
 				df = ncol;
 				converged = linearRegCompare( pvp, phenovec, designmat, nobs, stride, df );
-				if(!converged)Rcpp::warning("Cannot Converge when doing regression for calculating P-value.");
+				if(!converged)Rcpp::Rcout<< "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
 				pvp = ( converged ) ? pvp : std::numeric_limits<double>::quiet_NaN();    // p-value for T ~ L|G*
 				if( pvp > pv ) npos++;
 
@@ -304,7 +306,7 @@ void citconlog2_linear( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nume
 		pval3[0] = pvec[2]; // pval for G ~ L|T
 		pval4[0] = pvec[3]; // pval for L ind T|G
 
-		cout<<"pvals:"<<endl<<"\t"<<pval<<" "<<pval1<<" "<<pval2<<" "<<pval3<<" "<<pval4<<endl;
+		// cout<<"pvals:"<<endl<<"\t"<<pval<<" "<<pval1<<" "<<pval2<<" "<<pval3<<" "<<pval4<<endl;
 
 		pvec.clear();
 		gresid.clear();
