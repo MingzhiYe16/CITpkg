@@ -848,47 +848,7 @@ cit.bp.v2 = function(L,
     if (aa != 2)
       stop("dim(G)[2] + dim(T)[2]  must equal 2")
 
-    if (is.null(C)) {
-      citbin(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(n.L),
-        as.integer(df.L),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(rseed)
 
-      )
-      #tmp=c(pval1,pval2,pval3,pval4,pval3nc)
-
-
-      # using pval3nc and df, n.col, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = n.L - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = n.L - (df.L + 2) # 2 is for G and intercept
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      if (fncp < 0)
-        fncp = 0
-      G.p3 = qf(pval3,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      pval3 = pf(G.p3,
-                             df1 = df1,
-                             df2 = df2,
-                             fncp,
-                             lower.tail = FALSE)
-
-    } else {
       citbincvr(
         as.double(L),
         as.double(G),
@@ -928,7 +888,6 @@ cit.bp.v2 = function(L,
                              fncp,
                              lower.tail = FALSE)
 
-    } # End else is null C
 
     ntest = 1
     rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
@@ -1301,33 +1260,6 @@ cit.bp.m.v1 = function(L,
   names(mydat) = c(L.nms, G.nms, "T", C.nms)
 
   if (n.perm == 0) {
-    if (is.null(C)) {
-      citbinm(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(nobs),
-        as.integer(df.L),
-        as.integer(df.G),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(rseed)
-
-      )
-      df1 = df.L
-      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
-
-      fncp = 0
-
-      # p-value, p3: G ~ L|T
-      p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
-
-
-
-    } else {
       citbinmcvr(
         as.double(L),
         as.double(G),
@@ -1353,7 +1285,7 @@ cit.bp.m.v1 = function(L,
       # p-value, p3: G ~ L|T
       p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
 
-    } # End else is null C
+
 
     ntest = 1
     rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
@@ -1685,41 +1617,6 @@ cit.bp.m.v2 = function(L,
   names(mydat) = c(L.nms, G.nms, "T", C.nms)
 
   if (n.perm == 0) {
-    if (is.null(C)) {
-      citbinm(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(nobs),
-        as.integer(df.L),
-        as.integer(df.G),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(rseed)
-
-      )
-
-
-
-      # using pval3nc and df, n.col, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = nobs - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      if (fncp < 0)
-        fncp = 0
-
-      # p-value, p3: G ~ L|T
-      p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
-
-    } else {
       citbinmcvr(
         as.double(L),
         as.double(G),
@@ -1754,7 +1651,6 @@ cit.bp.m.v2 = function(L,
       # p-value, p3: G ~ L|T
       p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
 
-    } # End else is null C
 
     ntest = 1
     rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
@@ -2527,14 +2423,15 @@ cit.cp.v2 = function(L,
     if (aa != 2)
       stop("dim(G)[2] + dim(T)[2]  must equal 2")
 
-    if (is.null(C)) {
-      citbin_linear(
+      citbincvr_linear(
         as.double(L),
         as.double(G),
         as.double(T),
+        as.double(C),
         as.integer(maxit),
         as.integer(n.L),
         as.integer(df.L),
+        as.integer(df.C),
         as.double(pval1),
         as.double(pval2),
         as.double(pval3),
@@ -2568,49 +2465,7 @@ cit.cp.v2 = function(L,
                  lower.tail = FALSE)
       # print(c(pval3nc,fncp, G.nc, G.p3, pval3))
 
-    } else {
-      citbincvr_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.double(C),
-        as.integer(maxit),
-        as.integer(n.L),
-        as.integer(df.L),
-        as.integer(df.C),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(rseed)
 
-      )
-
-
-
-      # using pval3nc and df's, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = n.L - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = n.L - (df.L + 2) # 2 is for G and intercept, covariates are not included in pval3 test
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      if (fncp < 0)
-        fncp = 0
-      G.p3 = qf(pval3,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      pval3 = pf(G.p3,
-                 df1 = df1,
-                 df2 = df2,
-                 fncp,
-                 lower.tail = FALSE)
-
-    } # End else is null C
 
     ntest = 1
     rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
@@ -2984,31 +2839,6 @@ cit.cp.m.v1 = function(L,
   names(mydat) = c(L.nms, G.nms, "T", C.nms)
 
   if (n.perm == 0) {
-    if (is.null(C)) {
-      citbinm_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(nobs),
-        as.integer(df.L),
-        as.integer(df.G),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(rseed)
-
-      )
-      df1 = df.L
-      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
-
-      fncp = 0
-
-      # p-value, p3: G ~ L|T
-      p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
-
-    } else {
       citbinmcvr_linear(
         as.double(L),
         as.double(G),
@@ -3034,7 +2864,6 @@ cit.cp.m.v1 = function(L,
       # p-value, p3: G ~ L|T
       p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
 
-    } # End else is null C
 
     ntest = 1
     rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
@@ -3365,41 +3194,6 @@ cit.cp.m.v2 = function(L,
   names(mydat) = c(L.nms, G.nms, "T", C.nms)
 
   if (n.perm == 0) {
-    if (is.null(C)) {
-      citbinm_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(nobs),
-        as.integer(df.L),
-        as.integer(df.G),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(rseed)
-
-      )
-
-
-
-      # using pval3nc and df, n.col, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = nobs - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      if (fncp < 0)
-        fncp = 0
-
-      # p-value, p3: G ~ L|T
-      p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
-
-    } else {
       citbinmcvr_linear(
         as.double(L),
         as.double(G),
@@ -3434,7 +3228,6 @@ cit.cp.m.v2 = function(L,
       # p-value, p3: G ~ L|T
       p3 = linregM.nc(mydat[, L.nms], mydat[, G.nms], mydat[, "T"], fncp)
 
-    } # End else is null C
 
     ntest = 1
     rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))

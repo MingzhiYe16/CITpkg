@@ -89,7 +89,9 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 			 }
 		}   // End for rw          
 
-		Cm = gsl_matrix_alloc (nobs, ncolc);
+		if(ncolc > 0){
+			Cm = gsl_matrix_alloc (nobs, ncolc);
+		}
 		Lm = gsl_matrix_alloc (nobs, ncol);
 		Gm = gsl_vector_alloc (nobs);
 		Tm = gsl_vector_alloc (nobs);
@@ -287,7 +289,7 @@ void citbincvr( Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVecto
 		maxp = maxElementWithNan(pvec);
 		nperm = firstloop;
 		aa = npos < posno;
-		bb = maxp < alpha * 1.5;
+		bb = maxp < (ncolc <= 0 ? alpha : alpha * 1.5);
 		cc = nperm < maxit;
 		testval = (double) (npos + 1) / nperm ;
 		dd = maxp < testval; // check that other component p-values are small
