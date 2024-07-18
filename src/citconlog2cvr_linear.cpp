@@ -101,7 +101,9 @@ void citconlog2cvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Nu
 		}
 	} // End for rw
 
-	Cm = gsl_matrix_alloc(nobs, ncolc);
+	if(ncolc > 0){
+		Cm = gsl_matrix_alloc(nobs, ncolc);
+	}
 	Lm = gsl_matrix_alloc(nobs, ncol);
 	Gm = gsl_vector_alloc(nobs);
 	Tm = gsl_vector_alloc(nobs);

@@ -188,9 +188,11 @@ cit.bp.v1 = function(L,
   L = ms_f(L)
   G = ms_f(G)
   T = ms_f(T)
-  if (!is.null(C))
+  ncolC = 0
+  if (!is.null(C)){
     C = ms_f(C)
-  ncolC = ncol(C)
+    ncolC = ncol(C)
+  }
 
   if (n.perm == 0) {
     aa = dim(G)[2] + dim(T)[2]
@@ -206,25 +208,7 @@ cit.bp.v1 = function(L,
     nrow = dim(L)[1]
     ncol = dim(L)[2]
 
-    if (is.null(C)) {
-      citconlog2(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(nrow),
-        as.integer(ncol),
-        as.double(pval),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.integer(maxit),
-        as.integer(rseed)
-      )
-      tmp=c(pval,pval1,pval2,pval3,pval4)
 
-      startind = 5
-    } else {
       citconlog2cvr(
         as.double(L),
         as.double(G),
@@ -244,8 +228,6 @@ cit.bp.v1 = function(L,
       )
       tmp=c(pval,pval1,pval2,pval3,pval4)
 
-      startind = 7
-    } # End else is null C
 
     ntest = 1
     rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
@@ -279,50 +261,7 @@ cit.bp.v1 = function(L,
     nrow = dim(L)[1]
     ncol = dim(L)[2]
 
-    if (is.null(C) & is.null(rseed)) {
-      # here permutations are not the same between multiple omnibus tests, so algorithm is slightly more computationally efficient.
-      citconlog3p(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(nrow),
-        as.integer(ncol),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(perm.index),
-        as.integer(rseed)
 
-      )
-
-      startind = 3
-    } else if (is.null(C)) {
-      set.seed(rseed)
-      citconlog3p(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(nrow),
-        as.integer(ncol),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-      startind = 3
-    } else {
-      set.seed(rseed)
       citconlog3pcvr(
         as.double(L),
         as.double(G),
@@ -343,8 +282,6 @@ cit.bp.v1 = function(L,
 
       )
 
-      startind = 5
-    } # End else is null covar and perm.imat
 
     rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
     names(rslts) = c("perm",
@@ -921,94 +858,6 @@ cit.bp.v2 = function(L,
     pval3nc=rep(1.0, (n.perm +1)) # output component p-values
     n.L = dim(L)[1]
     df.L = dim(L)[2]
-
-    if (is.null(C) & is.null(rseed)) {
-      # here permutations are not the same between multiple omnibus tests, so algorithm is slightly more computationally efficient.
-      citbinp(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(n.L),
-        as.integer(df.L),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-
-
-      # using pval3nc and df, n.col, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = n.L - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = n.L - (df.L + 2) # 2 is for df.T and intercept
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      fncp = ifelse(fncp < 0, 0, fncp)
-      G.p3 = qf(pval3,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      pval3 = pf(G.p3,
-                             df1 = df1,
-                             df2 = df2,
-                             fncp,
-                             lower.tail = FALSE)
-
-    } else if (is.null(C)) {
-      set.seed(rseed)
-      citbinp(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(n.L),
-        as.integer(df.L),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-
-      # using pval3nc and df, n.col, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = n.L - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = n.L - (df.L + 2) # 2 is for G and intercept
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      fncp = ifelse(fncp < 0, 0, fncp)
-      G.p3 = qf(pval3,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      pval3 = pf(G.p3,
-                             df1 = df1,
-                             df2 = df2,
-                             fncp,
-                             lower.tail = FALSE)
-
-    } else {
-      set.seed(rseed)
       citbinpcvr(
         as.double(L),
         as.double(G),
@@ -1051,7 +900,6 @@ cit.bp.v2 = function(L,
                              fncp,
                              lower.tail = FALSE)
 
-    } # End else is null covar and perm.imat
 
     rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
     names(rslts) = c("perm",
@@ -1321,51 +1169,6 @@ cit.bp.m.v1 = function(L,
       rseed = ceiling(runif(1) * 10000000)
     set.seed(rseed)
 
-    if (is.null(C)) {
-      citbinmp(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(nobs),
-        as.integer(df.L),
-        as.integer(df.G),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-      df1 = df.L
-      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      for (j in 1:length(fncp)) {
-        fncp[j] = 0
-      }
-
-      # p-value, p3: G ~ L|T
-      p3 = rep(1, length(fncp))
-      for (j in 1:length(fncp)) {
-        ind.perm = 1:nrow(mydat)
-        if (j > 1)
-          ind.perm = sample(1:nrow(mydat))
-        tmpdat = mydat
-        tmpdat[, L.nms] = mydat[ind.perm, L.nms]
-        p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, "T"], fncp[j])
-        rm(tmpdat)
-      }
-      pval3 = p3
-
-
-    } else {
       citbinmpcvr(
         as.double(L),
         as.double(G),
@@ -1410,7 +1213,6 @@ cit.bp.m.v1 = function(L,
       }
       pval3 = p3
 
-    } # End else is null covar and perm.imat
 
     rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
     names(rslts) = c("perm",
@@ -1686,54 +1488,6 @@ cit.bp.m.v2 = function(L,
       rseed = ceiling(runif(1) * 10000000)
     set.seed(rseed)
 
-    if (is.null(C)) {
-      citbinmp(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(nobs),
-        as.integer(df.L),
-        as.integer(df.G),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-      # using pval3nc and df's, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = nobs - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      for (j in 1:length(fncp)) {
-        if (fncp[j] < 0)
-          fncp[j] = 0
-      }
-
-      # p-value, p3: G ~ L|T
-      p3 = rep(1, length(fncp))
-      for (j in 1:length(fncp)) {
-        ind.perm = 1:nrow(mydat)
-        if (j > 1)
-          ind.perm = sample(1:nrow(mydat))
-        tmpdat = mydat
-        tmpdat[, L.nms] = mydat[ind.perm, L.nms]
-        p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, "T"], fncp[j])
-        rm(tmpdat)
-      }
-      pval3 = p3
-
-    } else {
       citbinmpcvr(
         as.double(L),
         as.double(G),
@@ -1783,7 +1537,6 @@ cit.bp.m.v2 = function(L,
       }
       pval3 = p3
 
-    } # End else is null covar and perm.imat
 
     rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
     names(rslts) = c("perm",
@@ -2088,9 +1841,11 @@ cit.cp.v1 = function(L,
   L = ms_f(L)
   G = ms_f(G)
   T = ms_f(T)
-  if (!is.null(C))
+  ncolC = 0
+  if (!is.null(C)){
     C = ms_f(C)
-  ncolC = ncol(C)
+    ncolC = ncol(C)
+  }
 
   if (n.perm == 0) {
     aa = dim(G)[2] + dim(T)[2]
@@ -2106,26 +1861,6 @@ cit.cp.v1 = function(L,
     nrow = dim(L)[1]
     ncol = dim(L)[2]
 
-    if (is.null(C)) {
-      citconlog2_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(nrow),
-        as.integer(ncol),
-        as.double(pval),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.integer(maxit),
-        as.integer(rseed)
-
-      )
-      tmp=c(pval,pval1,pval2,pval3,pval4)
-
-      startind = 5
-    } else {
       citconlog2cvr_linear(
         as.double(L),
         as.double(G),
@@ -2145,8 +1880,6 @@ cit.cp.v1 = function(L,
       )
       tmp=c(pval,pval1,pval2,pval3,pval4)
 
-      startind = 7
-    } # End else is null C
 
     ntest = 1
     rslts = as.data.frame(matrix(NA, nrow = ntest, ncol = 5))
@@ -2181,51 +1914,7 @@ cit.cp.v1 = function(L,
     nrow = dim(L)[1]
     ncol = dim(L)[2]
 
-    if (is.null(C) & is.null(rseed)) {
-      # here permutations are not the same between multiple omnibus tests, so algorithm is slightly more computationally efficient.
 
-      citconlog3p_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(nrow),
-        as.integer(ncol),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-      startind = 3
-    } else if (is.null(C)) {
-      set.seed(rseed)
-      citconlog3p_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(nrow),
-        as.integer(ncol),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-      startind = 3
-    } else {
-      set.seed(rseed)
       citconlog3pcvr_linear(
         as.double(L),
         as.double(G),
@@ -2246,8 +1935,6 @@ cit.cp.v1 = function(L,
 
       )
 
-      startind = 5
-    } # End else is null covar and perm.imat
 
     rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
     names(rslts) = c("perm",
@@ -2502,93 +2189,6 @@ cit.cp.v2 = function(L,
     n.L = dim(L)[1]
     df.L = dim(L)[2]
 
-    if (is.null(C) & is.null(rseed)) {
-      # here permutations are not the same between multiple omnibus tests, so algorithm is slightly more computationally efficient.
-      citbinp_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(n.L),
-        as.integer(df.L),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-
-
-      # using pval3nc and df, n.col, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = n.L - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = n.L - (df.L + 2) # 2 is for df.T and intercept
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      fncp = ifelse(fncp < 0, 0, fncp)
-      G.p3 = qf(pval3,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      pval3 = pf(G.p3,
-                 df1 = df1,
-                 df2 = df2,
-                 fncp,
-                 lower.tail = FALSE)
-
-    } else if (is.null(C)) {
-      set.seed(rseed)
-      citbinp_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(n.L),
-        as.integer(df.L),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval3),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-
-      # using pval3nc and df, n.col, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = n.L - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = n.L - (df.L + 2) # 2 is for G and intercept
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      fncp = ifelse(fncp < 0, 0, fncp)
-      G.p3 = qf(pval3,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      pval3 = pf(G.p3,
-                 df1 = df1,
-                 df2 = df2,
-                 fncp,
-                 lower.tail = FALSE)
-
-    } else {
-      set.seed(rseed)
       citbinpcvr_linear(
         as.double(L),
         as.double(G),
@@ -2631,7 +2231,6 @@ cit.cp.v2 = function(L,
                  fncp,
                  lower.tail = FALSE)
 
-    } # End else is null covar and perm.imat
 
     rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
     names(rslts) = c("perm",
@@ -2899,50 +2498,6 @@ cit.cp.m.v1 = function(L,
       rseed = ceiling(runif(1) * 10000000)
     set.seed(rseed)
 
-    if (is.null(C)) {
-      citbinmp_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(nobs),
-        as.integer(df.L),
-        as.integer(df.G),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-      df1 = df.L
-      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      for (j in 1:length(fncp)) {
-        fncp[j] = 0
-      }
-
-      # p-value, p3: G ~ L|T
-      p3 = rep(1, length(fncp))
-      for (j in 1:length(fncp)) {
-        ind.perm = 1:nrow(mydat)
-        if (j > 1)
-          ind.perm = sample(1:nrow(mydat))
-        tmpdat = mydat
-        tmpdat[, L.nms] = mydat[ind.perm, L.nms]
-        p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, "T"], fncp[j])
-        rm(tmpdat)
-      }
-      pval3 = p3
-
-    } else {
       citbinmpcvr_linear(
         as.double(L),
         as.double(G),
@@ -2986,8 +2541,6 @@ cit.cp.m.v1 = function(L,
         rm(tmpdat)
       }
       pval3 = p3
-
-    } # End else is null covar and perm.imat
 
     rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
     names(rslts) = c("perm",
@@ -3263,54 +2816,6 @@ cit.cp.m.v2 = function(L,
       rseed = ceiling(runif(1) * 10000000)
     set.seed(rseed)
 
-    if (is.null(C)) {
-      citbinmp_linear(
-        as.double(L),
-        as.double(G),
-        as.double(T),
-        as.integer(maxit),
-        as.integer(permit),
-        as.integer(n.perm),
-        as.integer(nobs),
-        as.integer(df.L),
-        as.integer(df.G),
-        as.double(pval1),
-        as.double(pval2),
-        as.double(pval4),
-        as.double(pval3nc),
-        as.integer(perm.index),
-        as.integer(rseed)
-
-      )
-
-      # using pval3nc and df's, compute non-centrality parameter, lambda
-      # transform pval3nc p-value to F-statistic w/ correct df, df.numerator = df.L, df.denominator = nobs - (df.L + df.T + 1), where df.T = 1
-      df1 = df.L
-      df2 = nobs - (df.L + 2) # 2 is for df.T and intercept, covariates are not included in pval3 test
-      G.nc = qf(pval3nc,
-                df1 = df1,
-                df2 = df2,
-                lower.tail = FALSE)
-      fncp = G.nc * (df1 / df2) * (df2 - df1) - df1
-      for (j in 1:length(fncp)) {
-        if (fncp[j] < 0)
-          fncp[j] = 0
-      }
-
-      # p-value, p3: G ~ L|T
-      p3 = rep(1, length(fncp))
-      for (j in 1:length(fncp)) {
-        ind.perm = 1:nrow(mydat)
-        if (j > 1)
-          ind.perm = sample(1:nrow(mydat))
-        tmpdat = mydat
-        tmpdat[, L.nms] = mydat[ind.perm, L.nms]
-        p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, "T"], fncp[j])
-        rm(tmpdat)
-      }
-      pval3 = p3
-
-    } else {
       citbinmpcvr_linear(
         as.double(L),
         as.double(G),
@@ -3360,7 +2865,6 @@ cit.cp.m.v2 = function(L,
       }
       pval3 = p3
 
-    } # End else is null covar and perm.imat
 
     rslts = as.data.frame(matrix(NA, nrow = (n.perm + 1), ncol = 6))
     names(rslts) = c("perm",
