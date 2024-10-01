@@ -4,7 +4,7 @@
 \alias{cit.cp.v1}
 \title{Causal Inference Test for a Continuous Outcome in Version 1}
 \usage{
-cit.cp.v1(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+cit.cp.v1(L, G, T, C=NULL, CG=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
 }
 \arguments{
 \item{L}{Vector or nxp design matrix representing the instrumental variable(s).}
@@ -13,7 +13,9 @@ cit.cp.v1(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
 
 \item{T}{Continuous vector representing the clinical trait or outcome of interest.}
 
-\item{C}{Vector or nxp design matrix representing adjustment covariates.}
+\item{C}{Vector or nxp design matrix representing adjustment covariates for T as the outcome.}
+
+\item{CG}{Vector or nxp design matrix representing adjustment covariates for G as the outcome.}
 
 \item{maxit}{Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.}
 
@@ -51,6 +53,7 @@ L = matrix(rbinom(ss*3,2,.5), ncol=3)
 G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
 T = matrix(.3*G + e2, ncol=1)
 C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+CG = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
 
 n.perm = 5
 perm.index = matrix(NA, nrow=ss, ncol=n.perm)
@@ -63,10 +66,10 @@ results
 results = cit.cp.v1(L, G, T, perm.index=perm.index, n.perm=5)
 results
 
-results = cit.cp.v1(L, G, T, C)
+results = cit.cp.v1(L, G, T, C, CG)
 results
 
-results = cit.cp.v1(L, G, T, C, n.perm=5)
+results = cit.cp.v1(L, G, T, C, CG, n.perm=5)
 results
 
 }

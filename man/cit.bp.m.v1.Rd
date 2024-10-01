@@ -4,7 +4,7 @@
 \alias{cit.bp.m.v1}
 \title{Causal Inference Test for multiple mediators and a Binary Outcome in Version 1}
 \usage{
-cit.bp.m.v1(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
+cit.bp.m.v1(L, G, T, C=NULL, CG=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
 }
 \arguments{
 \item{L}{Vector or nxp design matrix representing the instrumental variable(s).}
@@ -13,7 +13,9 @@ cit.bp.m.v1(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL)
 
 \item{T}{Binary vector representing the clinical trait or outcome of interest.}
 
-\item{C}{Vector or nxp design matrix representing adjustment covariates.}
+\item{C}{Vector or nxp design matrix representing adjustment covariates when Y is T.}
+
+\item{CG}{Vector or nxp design matrix representing adjustment covariates when Y is G.}
 
 \item{maxit}{Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.}
 
@@ -53,6 +55,7 @@ T = matrix(.3*G + e2, ncol=3)
 T <- rowSums(T)
 T = ifelse( T > median(T), 1, 0 )
 C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+CG = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
 
 n.perm = 5
 perm.index = matrix(NA, nrow=ss, ncol=n.perm)
@@ -65,10 +68,10 @@ results
 results = cit.bp.m.v1(L, G, T, perm.index=perm.index, n.perm=5)
 results
 
-results = cit.bp.m.v1(L, G, T, C)
+results = cit.bp.m.v1(L, G, T, C, CG)
 results
 
-results = cit.bp.m.v1(L, G, T, C, n.perm=5)
+results = cit.bp.m.v1(L, G, T, C, CG, n.perm=5)
 results
 
 }

@@ -20,15 +20,19 @@ using namespace std;
 L: matrix of continuous instrumental variables
 G: matrix of candidate causal mediators
 T: matrix of 0/1 variables
+CG: matrix of continuous covariates for T
 Programmer: Joshua Millstein
 */
 
+// conduct permutations individually for each test so an intersection-union type approach can be applied to permutation-FDR
+
+// NP
+
 // [[Rcpp::export]]
-void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector C, int &nrow,
-						   int &ncol, int &ncolc, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, int &maxit, int &permit, int &boots, Rcpp::NumericVector Pind, int &rseed)
+void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector C, Rcpp::NumericVector CG, int &nrow,
+						   int &ncol, int &ncolc, int &ncolct, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, int &maxit, int &permit, int &boots, Rcpp::NumericVector Pind, int &rseed)
 {
 	unsigned seed = rseed;
-	// conduct permutations individually for each test so an intersection-union type approach can be applied to permutation-FDR
 
 	int rw, brw, cl, i, j, rind, df, df1, df2, npos, nperm, dncol, perm, firstloop;
 	int *bootind, *nposperm;
@@ -38,6 +42,7 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 	const int posno = 20;
 	vector<vector<double>> LL;
 	vector<vector<double>> CC;
+	vector<vector<double>> CGG;
 	vector<vector<int>> PP;
 	vector<double> gpred;
 	vector<double> gresid;
@@ -45,9 +50,10 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 	gsl_matrix *cov, *X;
 	gsl_vector *Gm, *Gp, *c;
 
+	// Initialize vectors
 	bootind = new int[nrow];
 	nposperm = new int[boots];
-	designmat = new double[nrow * (ncol + ncolc + 2)];
+	designmat = new double[nrow * (ncol + ncolc + ncolct + 2)]; // Adjusted for CG
 	phenovec = new double[nrow];
 	pindep = new double[boots];
 
@@ -59,14 +65,17 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 
 	LL.resize(nrow);
 	CC.resize(nrow);
+	CGG.resize(nrow);
 	PP.resize(nrow);
 	permindvec.resize(nrow);
 	GetRNGstate();
 
+	// Fill LL, CC, and CGG matrices
 	for (rw = 0; rw < nrow; rw++)
 	{
 		LL[rw].resize(ncol);
 		CC[rw].resize(ncolc);
+		CGG[rw].resize(ncolct);
 	}
 
 	for (cl = 0; cl < ncol; cl++)
@@ -82,6 +91,14 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 		for (rw = 0; rw < nrow; rw++)
 		{
 			CC[rw][cl] = C[rw + nrow * cl];
+		}
+	}
+
+	for (cl = 0; cl < ncolct; cl++)
+	{
+		for (rw = 0; rw < nrow; rw++)
+		{
+			CGG[rw][cl] = CG[rw + nrow * cl];
 		}
 	}
 
@@ -196,19 +213,23 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 		pv = (converged) ? pv : std::numeric_limits<double>::quiet_NaN();
 		pval2[perm] = pv; // pval for T ~ G|L,C, 9 if it did not converge, p2
 
-		// fit model G ~ T
-		dncol = 2;
+		// fit model G ~ T + CG
+		dncol = 2 + ncolct; // Adjust the number of columns to include CG
 		rind = 0;
 		for (rw = 0; rw < nrow; rw++)
 		{
 			brw = bootind[rw];
 			aa = 1;
 			aa = (T[rw] != -9999) ? aa : 0;
+			aa = (G[rw] != -9999) ? aa : 0;
 			for (cl = 0; cl < ncol; cl++)
 			{
 				aa = (LL[brw][cl] != -9999) ? aa : 0;
 			}
-			aa = (G[rw] != -9999) ? aa : 0;
+			for (cl = 0; cl < ncolct; cl++)
+			{
+				aa = (CGG[brw][cl] != -9999) ? aa : 0;
+			}
 			if (aa)
 			{
 				rind++;
@@ -224,15 +245,23 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 			brw = bootind[rw];
 			aa = 1;
 			aa = (T[rw] != -9999) ? aa : 0;
+			aa = (G[rw] != -9999) ? aa : 0;
 			for (cl = 0; cl < ncol; cl++)
 			{
 				aa = (LL[brw][cl] != -9999) ? aa : 0;
 			}
-			aa = (G[rw] != -9999) ? aa : 0;
+			for (cl = 0; cl < ncolct; cl++)
+			{
+				aa = (CGG[brw][cl] != -9999) ? aa : 0;
+			}
 			if (aa)
 			{
 				gsl_matrix_set(X, rind, 0, 1.0); // intercept
 				gsl_matrix_set(X, rind, 1, T[rw]);
+				for (cl = 0; cl < ncolct; cl++)
+				{
+					gsl_matrix_set(X, rind, 2 + cl, CGG[brw][cl]);
+				}
 				gsl_vector_set(Gm, rind, G[rw]);
 				rind++;
 			} // end if aa
@@ -248,19 +277,23 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 		gsl_matrix_free(cov);
 		gsl_vector_free(c);
 
-		// fit model G ~ L + T
-		dncol = 1 + ncol + 1;
+		// fit model G ~ L + T + CG
+		dncol = 1 + ncol + 1 + ncolct; // Adjust for T and CG
 		rind = 0;
 		for (rw = 0; rw < nrow; rw++)
 		{
 			brw = bootind[rw];
 			aa = 1;
 			aa = (T[rw] != -9999) ? aa : 0;
+			aa = (G[rw] != -9999) ? aa : 0;
 			for (cl = 0; cl < ncol; cl++)
 			{
 				aa = (LL[brw][cl] != -9999) ? aa : 0;
 			}
-			aa = (G[rw] != -9999) ? aa : 0;
+			for (cl = 0; cl < ncolct; cl++)
+			{
+				aa = (CGG[brw][cl] != -9999) ? aa : 0;
+			}
 			if (aa)
 			{
 				rind++;
@@ -276,11 +309,15 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 			brw = bootind[rw];
 			aa = 1;
 			aa = (T[rw] != -9999) ? aa : 0;
+			aa = (G[rw] != -9999) ? aa : 0;
 			for (cl = 0; cl < ncol; cl++)
 			{
 				aa = (LL[brw][cl] != -9999) ? aa : 0;
 			}
-			aa = (G[rw] != -9999) ? aa : 0;
+			for (cl = 0; cl < ncolct; cl++)
+			{
+				aa = (CGG[brw][cl] != -9999) ? aa : 0;
+			}
 			if (aa)
 			{
 				gsl_matrix_set(X, rind, 0, 1.0); // intercept
@@ -289,6 +326,10 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 					gsl_matrix_set(X, rind, cl + 1, LL[brw][cl]);
 				}
 				gsl_matrix_set(X, rind, 1 + ncol, T[rw]);
+				for (cl = 0; cl < ncolct; cl++)
+				{
+					gsl_matrix_set(X, rind, 2 + ncol + cl, CGG[brw][cl]);
+				}
 				gsl_vector_set(Gm, rind, G[rw]);
 				rind++;
 			} // end if aa
@@ -303,11 +344,11 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 		gsl_vector_free(Gm);
 		gsl_matrix_free(cov);
 		gsl_vector_free(c);
-		df1 = ncol;
+		df1 = ncol; // Adjusted DF for added CG covariates
 		df2 = rind - dncol;
 		F = df2 * (rss2 - rss3) / (rss3 * df1);
 		pv = gsl_cdf_fdist_Q(F, df1, df2);
-		pval3[perm] = pv; // pval for G ~ L|T, p3
+		pval3[perm] = pv; // pval for G ~ L|T, adjusted for CG
 
 		// fit model T ~ C + G + L
 		if (perm == 0)
@@ -495,6 +536,7 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 		} // end if perm > 0
 	} // End perm loop
 
+
 	npos = 0;
 	for (i = 0; i < firstloop; i++)
 	{
@@ -660,6 +702,8 @@ void citconlog3pcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::N
 	gresid.clear();
 	gpred.clear();
 	LL.clear();
+	CC.clear();
+	CGG.clear();
 	gsl_vector_free(Gp);
 	PutRNGstate();
 

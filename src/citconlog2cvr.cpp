@@ -21,127 +21,159 @@ C: matrix of continuous adjustment covariates for T
 L: matrix of continuous instrumental variables
 G: matrix of candidate causal mediators
 T: matrix of 0/1 variables
+CG: matrix of continuous covariates for T
 Programmer: Joshua Millstein
 */
 
 // [[Rcpp::export]]
-void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector C, int &nrow,
-				   int &ncol, int &ncolc, Rcpp::NumericVector pval, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, int &maxit, int &rseed)
+void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector C,
+                   Rcpp::NumericVector CG, int &nrow, int &ncol, int &ncolc, int &ncolct,
+                   Rcpp::NumericVector pval, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2,
+                   Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, int &maxit, int &rseed)
 {
-	unsigned seed = rseed;
-	int rw, cl, i, rind, df, df1, df2, nobs, ip, npos, nperm, nmiss, stride;
-	double rss2, rss3, rss5, F, tmp, rhs, maxp, testval;
-	double pv = 9.0;  // Need to initialize value, otherwise conditional jump
-	double pvp = 9.0; // Need to initialize value, otherwise conditional jump
-	double *designmat, *phenovec;
-	bool aa, bb, cc, dd, converged;
-	const int firstloop = 1000;
-	const int posno = 20;
-	const double alpha = .1;
-	vector<vector<double>> LL;
-	vector<vector<double>> CC;
-	vector<double> pvec;
-	vector<double> gpred;
-	vector<double> gresid;
-	gsl_matrix *Lm, *cov, *X, *Cm;
-	gsl_vector *Gm, *Tm, *Gp, *c;
 
-	designmat = new double[nrow * (ncol + ncolc + 2)];
-	phenovec = new double[nrow];
+    unsigned seed = rseed;
+    int rw, cl, i, rind, df, df1, df2, nobs, ip, npos, nperm, nmiss, stride;
+    double rss2, rss3, rss5, F, tmp, rhs, maxp, testval;
+    double pv = 9.0;  // Need to initialize value, otherwise conditional jump
+    double pvp = 9.0; // Need to initialize value, otherwise conditional jump
+    double *designmat, *phenovec;
+    bool aa, bb, cc, dd, converged;
+    const int firstloop = 2000;
+    const int posno = 20;
+    const double alpha = .1;
+    vector<vector<double>> LL;
+    vector<vector<double>> CC;
+    vector<vector<double>> CGG;
+    vector<double> pvec;
+    vector<double> gpred;
+    vector<double> gresid;
+    gsl_matrix *Lm, *cov, *X, *Cm, *CGm;
+    gsl_vector *Gm, *Tm, *Gp, *c;
 
-	LL.resize(nrow);
-	CC.resize(nrow);
+    designmat = new double[nrow * (ncol + ncolc + ncolct + 2)];
+    phenovec = new double[nrow];
 
-	GetRNGstate();
+    LL.resize(nrow);
+    CC.resize(nrow);
+    CGG.resize(nrow);
 
-	for (rw = 0; rw < nrow; rw++)
-	{
-		LL[rw].resize(ncol);
-		CC[rw].resize(ncolc);
-	}
+    GetRNGstate();
 
-	for (cl = 0; cl < ncol; cl++)
-	{
-		for (rw = 0; rw < nrow; rw++)
-		{
-			LL[rw][cl] = L[rw + nrow * cl];
-		}
-	}
-	for (cl = 0; cl < ncolc; cl++)
-	{
-		for (rw = 0; rw < nrow; rw++)
-		{
-			CC[rw][cl] = C[rw + nrow * cl];
-		}
-	}
+    for (rw = 0; rw < nrow; rw++)
+    {
+        LL[rw].resize(ncol);
+        CC[rw].resize(ncolc);
+        CGG[rw].resize(ncolct);
+    }
 
-	// create analysis vectors w/no missing data
-	nobs = 0;
-	for (rw = 0; rw < nrow; rw++)
-	{
-		nmiss = 0;
-		for (cl = 0; cl < ncol; cl++)
-		{
-			if (LL[rw][cl] == -9999)
-			{
-				nmiss++;
-			}
-		}
-		dd = 1;
-		for (cl = 0; cl < ncolc; cl++)
-		{
-			dd = (CC[rw][cl] != -9999) ? dd : 0;
-		}
-		aa = nmiss == 0;
-		bb = G[rw] != -9999;
-		cc = T[rw] != -9999;
-		if (aa && bb && cc && dd)
-		{
-			nobs++;
-		}
-	} // End for rw
+    for (cl = 0; cl < ncol; cl++)
+    {
+        for (rw = 0; rw < nrow; rw++)
+        {
+            LL[rw][cl] = L[rw + nrow * cl];
+        }
+    }
+    for (cl = 0; cl < ncolc; cl++)
+    {
+        for (rw = 0; rw < nrow; rw++)
+        {
+            CC[rw][cl] = C[rw + nrow * cl];
+        }
+    }
+    for (cl = 0; cl < ncolct; cl++)
+    {
+        for (rw = 0; rw < nrow; rw++)
+        {
+            CGG[rw][cl] = CG[rw + nrow * cl];
+        }
+    }
 
-	if(ncolc > 0){
-		Cm = gsl_matrix_alloc(nobs, ncolc);
-	}
-	Lm = gsl_matrix_alloc(nobs, ncol);
-	Gm = gsl_vector_alloc(nobs);
-	Tm = gsl_vector_alloc(nobs);
-	rind = 0;
-	for (rw = 0; rw < nrow; rw++)
-	{
-		nmiss = 0;
-		for (cl = 0; cl < ncol; cl++)
-		{
-			if (LL[rw][cl] == -9999)
-			{
-				nmiss++;
-			}
-		}
-		aa = nmiss == 0;
-		bb = G[rw] != -9999;
-		cc = T[rw] != -9999;
-		dd = 1;
-		for (cl = 0; cl < ncolc; cl++)
-		{
-			dd = (CC[rw][cl] != -9999) ? dd : 0;
-		}
+    // create analysis vectors w/no missing data
+    nobs = 0;
+    for (rw = 0; rw < nrow; rw++)
+    {
+        nmiss = 0;
+        for (cl = 0; cl < ncol; cl++)
+        {
+            if (LL[rw][cl] == -9999)
+            {
+                nmiss++;
+            }
+        }
+        dd = 1;
+        for (cl = 0; cl < ncolc; cl++)
+        {
+            dd = (CC[rw][cl] != -9999) ? dd : 0;
+        }
+        for (cl = 0; cl < ncolct; cl++)
+        {
+            dd = (CGG[rw][cl] != -9999) ? dd : 0;
+        }
+        aa = nmiss == 0;
+        bb = G[rw] != -9999;
+        cc = T[rw] != -9999;
+        if (aa && bb && cc && dd)
+        {
+            nobs++;
+        }
+    } // End for rw
 
-		if (aa && bb && cc && dd)
-		{
-			for (cl = 0; cl < ncol; cl++)
-			{
-				gsl_matrix_set(Lm, rind, cl, LL[rw][cl]);
-			}
-			for (cl = 0; cl < ncolc; cl++)
-			{
-				gsl_matrix_set(Cm, rind, cl, CC[rw][cl]);
-			}
-			gsl_vector_set(Gm, rind, G[rw]);
-			gsl_vector_set(Tm, rind, T[rw]);
-			rind++;
-		}
-	}
+    if (ncolc > 0)
+    {
+        Cm = gsl_matrix_alloc(nobs, ncolc);
+    }
+    if (ncolct > 0)
+    {
+        CGm = gsl_matrix_alloc(nobs, ncolct);
+    }
+    Lm = gsl_matrix_alloc(nobs, ncol);
+    Gm = gsl_vector_alloc(nobs);
+    Tm = gsl_vector_alloc(nobs);
+    rind = 0;
+    for (rw = 0; rw < nrow; rw++)
+    {
+        nmiss = 0;
+        for (cl = 0; cl < ncol; cl++)
+        {
+            if (LL[rw][cl] == -9999)
+            {
+                nmiss++;
+            }
+        }
+        aa = nmiss == 0;
+        bb = G[rw] != -9999;
+        cc = T[rw] != -9999;
+        dd = 1;
+        for (cl = 0; cl < ncolc; cl++)
+        {
+            dd = (CC[rw][cl] != -9999) ? dd : 0;
+        }
+        for (cl = 0; cl < ncolct; cl++)
+        {
+            dd = (CGG[rw][cl] != -9999) ? dd : 0;
+        }
+
+        if (aa && bb && cc && dd)
+        {
+            for (cl = 0; cl < ncol; cl++)
+            {
+                gsl_matrix_set(Lm, rind, cl, LL[rw][cl]);
+            }
+            for (cl = 0; cl < ncolc; cl++)
+            {
+                gsl_matrix_set(Cm, rind, cl, CC[rw][cl]);
+            }
+            for (cl = 0; cl < ncolct; cl++)
+            {
+                gsl_matrix_set(CGm, rind, cl, CGG[rw][cl]);
+            }
+            gsl_vector_set(Gm, rind, G[rw]);
+            gsl_vector_set(Tm, rind, T[rw]);
+            rind++;
+        }
+    }
+
 
 	// fit model T ~ C + L
 	ip = 1 + ncolc + ncol; // intercept + covariates + multiple L variable
@@ -188,46 +220,55 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 	pv = (converged) ? pv : std::numeric_limits<double>::quiet_NaN();
 	pvec.push_back(pv); // pval for T ~ G|L,C, 9 if it did not converge, p2
 
-	// fit model G ~ T
-	X = gsl_matrix_alloc(nobs, 2);
-	for (rw = 0; rw < nobs; rw++)
-	{
-		gsl_matrix_set(X, rw, 0, 1.0); // intercept
-		gsl_matrix_set(X, rw, 1, gsl_vector_get(Tm, rw));
-	}
-	c = gsl_vector_alloc(2);
-	cov = gsl_matrix_alloc(2, 2);
-	gsl_multifit_linear_workspace *work = gsl_multifit_linear_alloc(nobs, 2);
-	gsl_multifit_linear(X, Gm, c, cov, &rss2, work);
-	gsl_multifit_linear_free(work);
-	gsl_matrix_free(X);
-	gsl_matrix_free(cov);
-	gsl_vector_free(c);
+    // fit model G ~ T + CG
+    X = gsl_matrix_alloc(nobs, 2 + ncolct);
+    for (rw = 0; rw < nobs; rw++)
+    {
+        gsl_matrix_set(X, rw, 0, 1.0); // intercept
+        gsl_matrix_set(X, rw, 1, gsl_vector_get(Tm, rw));
+        for (cl = 0; cl < ncolct; cl++)
+        {
+            gsl_matrix_set(X, rw, cl + 2, gsl_matrix_get(CGm, rw, cl)); // Add CG as covariates next to T
+        }
+    }
+    c = gsl_vector_alloc(2 + ncolct);
+    cov = gsl_matrix_alloc(2 + ncolct, 2 + ncolct);
+    gsl_multifit_linear_workspace *work = gsl_multifit_linear_alloc(nobs, 2 + ncolct);
+    gsl_multifit_linear(X, Gm, c, cov, &rss2, work);
+    gsl_multifit_linear_free(work);
+    gsl_matrix_free(X);
+    gsl_matrix_free(cov);
+    gsl_vector_free(c);
 
-	// fit model G ~ L + T
-	X = gsl_matrix_alloc(nobs, ncol + 2);
-	for (rw = 0; rw < nobs; rw++)
-	{
-		gsl_matrix_set(X, rw, 0, 1.0); // intercept
-		for (cl = 0; cl < ncol; cl++)
-		{
-			gsl_matrix_set(X, rw, cl + 1, gsl_matrix_get(Lm, rw, cl));
-		}
-		gsl_matrix_set(X, rw, (ncol + 2) - 1, gsl_vector_get(Tm, rw));
-	}
-	c = gsl_vector_alloc(ncol + 2); // c: coefs
-	cov = gsl_matrix_alloc(ncol + 2, ncol + 2);
-	work = gsl_multifit_linear_alloc(nobs, ncol + 2);
-	gsl_multifit_linear(X, Gm, c, cov, &rss3, work);
-	gsl_multifit_linear_free(work);
-	gsl_matrix_free(X);
-	gsl_matrix_free(cov);
-	gsl_vector_free(c);
-	df1 = ncol;
-	df2 = nobs - (ncol + 2);
-	F = df2 * (rss2 - rss3) / (rss3 * df1);
-	pv = gsl_cdf_fdist_Q(F, df1, df2);
-	pvec.push_back(pv); // pval for G ~ L|T, p3
+    // fit model G ~ L + T + CG
+    X = gsl_matrix_alloc(nobs, ncol + 2 + ncolct);
+    for (rw = 0; rw < nobs; rw++)
+    {
+        gsl_matrix_set(X, rw, 0, 1.0); // intercept
+        for (cl = 0; cl < ncol; cl++)
+        {
+            gsl_matrix_set(X, rw, cl + 1, gsl_matrix_get(Lm, rw, cl));
+        }
+        gsl_matrix_set(X, rw, ncol + 1, gsl_vector_get(Tm, rw)); // Position of T adjusted for additional CG covariates
+        for (cl = 0; cl < ncolct; cl++)
+        {
+            gsl_matrix_set(X, rw, cl + ncol + 2, gsl_matrix_get(CGm, rw, cl)); // Add CG as covariates next to T
+        }
+    }
+    c = gsl_vector_alloc(ncol + 2 + ncolct); // Adjust coefficient vector size
+    cov = gsl_matrix_alloc(ncol + 2 + ncolct, ncol + 2 + ncolct); // Adjust covariance matrix size
+    work = gsl_multifit_linear_alloc(nobs, ncol + 2 + ncolct);
+    gsl_multifit_linear(X, Gm, c, cov, &rss3, work);
+    gsl_multifit_linear_free(work);
+    gsl_matrix_free(X);
+    gsl_matrix_free(cov);
+    gsl_vector_free(c);
+    df1 = ncol; // Adjust degrees of freedom for L and CG
+    df2 = nobs - (ncol + 2 + ncolct); // Adjust degrees of freedom to reflect added CG covariates
+    F = df2 * (rss2 - rss3) / (rss3 * df1);
+    pv = gsl_cdf_fdist_Q(F, df1, df2);
+    pvec.push_back(pv); // pval for G ~ L|T + CG, p3
+
 
 	// fit model T ~ C + G + L to test L
 	for (rw = 0; rw < nobs; rw++)
@@ -243,7 +284,6 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 			designmat[rw * stride + ncolc + 2 + cl] = gsl_matrix_get(Lm, rw, cl);
 		}
 	}
-
 	df = ncol;
 	converged = logisticReg(pv, phenovec, designmat, nobs, stride, df);
 	if (!converged)
@@ -283,9 +323,9 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 	gsl_vector_free(c);
 
 	// Conduct an initial set of permutations
-
 	Gp = gsl_vector_alloc(nobs);
 	npos = 0;
+
 	for (i = 0; i < firstloop; i++)
 	{
 		// randomly permute residuals
@@ -315,7 +355,7 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 				designmat[rw * stride + 2 + ncolc + cl] = gsl_matrix_get(Lm, rw, cl);
 			}
 		}
-
+		
 		df = ncol;
 		converged = logisticReg(pvp, phenovec, designmat, nobs, stride, df);
 		if (!converged)
@@ -381,12 +421,13 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 			nperm++;
 		} // end 'while' permutation loop
 	} // End if
-	pv = 1.0 * npos / nperm;
 
+	pv = 1.0 * npos / nperm;
 	pvec.push_back(pv); // pval for L ind T|G
 
 	maxp = maxElementWithNan(pvec);
 	pval[0] = maxp;
+
 	pval1[0] = pvec[0]; // pval for T ~ L
 	pval2[0] = pvec[1]; // pval for T ~ G|L
 	pval3[0] = pvec[2]; // pval for G ~ L|T
@@ -398,7 +439,10 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 	gsl_matrix_free(Lm);
 	gsl_vector_free(Gm);
 	gsl_vector_free(Tm);
-	gsl_matrix_free(Cm);
+	
+	if(ncolc > 0){gsl_matrix_free(Cm);}
+	if(ncolct > 0){gsl_matrix_free(CGm);}
+	
 	gsl_vector_free(Gp);
 	gsl_matrix_free(X);
 
@@ -407,5 +451,7 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 
 	PutRNGstate();
 	LL.clear();
+	CC.clear();
+	CGG.clear();
 
 } // End citconlog2

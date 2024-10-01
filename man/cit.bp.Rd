@@ -4,7 +4,7 @@
 \alias{cit.bp}
 \title{Causal Inference Test for a Binary Outcome}
 \usage{
-cit.bp(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robust=TRUE)
+cit.bp(L, G, T, C=NULL, CG=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robust=TRUE)
 }
 \arguments{
 \item{L}{Vector or nxp design matrix representing the instrumental variable(s).}
@@ -13,7 +13,9 @@ cit.bp(L, G, T, C=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robu
 
 \item{T}{Binary vector representing the clinical trait or outcome of interest.}
 
-\item{C}{Vector or nxp design matrix representing adjustment covariates.}
+\item{C}{Vector or nxp design matrix representing adjustment covariates for T as the outcome.}
+
+\item{CG}{Vector or nxp design matrix representing adjustment covariates for G as the outcome.}
 
 \item{maxit}{Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.}
 
@@ -54,6 +56,7 @@ G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
 T = matrix(.3*G + e2, ncol=1)
 T = ifelse( T > median(T), 1, 0 )
 C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+CG = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
 
 n.perm = 5
 perm.index = matrix(NA, nrow=ss, ncol=n.perm)
@@ -66,10 +69,10 @@ results
 results = cit.bp(L, G, T, perm.index=perm.index, n.perm=5, robust = FALSE)
 results
 
-results = cit.bp(L, G, T, C, robust = FALSE)
+results = cit.bp(L, G, T, C, CG, robust = FALSE)
 results
 
-results = cit.bp(L, G, T, C, n.perm=5, robust = FALSE)
+results = cit.bp(L, G, T, C, CG, n.perm=5, robust = FALSE)
 results
 # Run tests for single mediators and v2 algorithm
 results = cit.bp(L, G, T)
@@ -78,10 +81,10 @@ results
 results = cit.bp(L, G, T, perm.index=perm.index, n.perm=5)
 results
 
-results = cit.bp(L, G, T, C)
+results = cit.bp(L, G, T, C, CG)
 results
 
-results = cit.bp(L, G, T, C, n.perm=5)
+results = cit.bp(L, G, T, C, CG, n.perm=5)
 results
 
 # Errors for multiple mediators.
@@ -95,7 +98,6 @@ T = matrix(.3*G + e2, ncol=3)
 T <- rowSums(T)
 T = ifelse( T > median(T), 1, 0 )
 C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
-
 n.perm = 5
 perm.index = matrix(NA, nrow=ss, ncol=n.perm)
 for(j in 1:ncol(perm.index)) perm.index[, j] = sample(1:ss)

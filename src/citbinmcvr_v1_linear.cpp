@@ -34,7 +34,7 @@ void citbinmcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Numer
 	double rss5, pv, pvp, tmp, rhs, maxp, testval;
 	double *designmat, *phenovec;
 	bool aa, bb, cc, dd, converged;
-	const int firstloop = 1000;
+	const int firstloop = 2000;
 	const int posno = 20;
 	const double alpha = .1;
 	vector<vector<double>> LL;
@@ -405,12 +405,13 @@ void citbinmcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Numer
 	gpred.clear();
 	LL.clear();
 	GG.clear();
+	CC.clear();
 	Gp.clear();
 	gsl_matrix_free(Lm);
 	gsl_matrix_free(Gm);
 	gsl_vector_free(Gmj);
 	gsl_vector_free(Tm);
-	gsl_matrix_free(Cm);
+	if(dfc > 0){gsl_matrix_free(Cm);}
 
 	delete[] designmat;
 	delete[] phenovec;
