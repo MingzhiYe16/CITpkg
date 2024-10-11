@@ -1,6 +1,0 @@
-.DS_Store
-.vscode/
-.Rbuildignore
-.Rhistory
-.Rproj
-.user
