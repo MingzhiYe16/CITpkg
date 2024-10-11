@@ -1,0 +1,26 @@
+{
+    "id": "B2CCF27B",
+    "path": "~/CppProjects/cit2.3.2/inst/tinytest/test_cit.R",
+    "project_path": null,
+    "type": "r_source",
+    "hash": "2533780041",
+    "contents": "",
+    "dirty": false,
+    "created": 1719981242223.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "3,0",
+        "scrollLine": "3"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1621550547,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1621550547,
+    "read_only": false,
+    "read_only_alternatives": []
+}
