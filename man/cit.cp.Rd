@@ -4,18 +4,18 @@
 \alias{cit.cp}
 \title{Causal Inference Test for a Continuous Outcome}
 \usage{
-cit.cp(L, G, T, C=NULL, CG=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robust=TRUE)
+cit.cp(L, G, T, CT=NULL, CG=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robust=TRUE)
 }
 \arguments{
-\item{L}{Vector or nxp design matrix representing the instrumental variable(s).}
+\item{L}{Numeric or integer vector or nxp design matrix or dataframe representing the instrumental variable(s).}
 
-\item{G}{Continuous vector representing the potential causal mediator.}
+\item{G}{Numeric or integer vector, matrix, or dataframe representing the candidate causal mediator(s).}
 
-\item{T}{Continuous vector representing the clinical trait or outcome of interest.}
+\item{T}{Numeric or integer vector, matrix, or dataframe representing the trait or outcome.}
 
-\item{C}{Vector or nxp design matrix representing adjustment covariates for T as the outcome.}
+\item{CT}{Numeric or integer vector, matrix, or dataframe representing adjustment covariates for T as the outcome.}
 
-\item{CG}{Vector or nxp design matrix representing adjustment covariates for G as the outcome.}
+\item{CG}{Numeric or integer vector, matrix, or dataframe representing adjustment covariates for G as the outcome.}
 
 \item{maxit}{Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.}
 
@@ -23,9 +23,9 @@ cit.cp(L, G, T, C=NULL, CG=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=N
 
 \item{perm.index}{An n x n.perm matrix of permutation indices.}
 
-\item{rseed}{Seed for reproducible permutations.}
+\item{rseed}{Random seed for reproducible results. The default (NULL) is to use a clock seed.}
 
-\item{robust}{True for v2 algorithm and False for v1 algorithm}
+\item{robust}{The robust version (the default) is a modification that precludes a positive test result (small p-value) for both the causal and reverse causal scenarios.}
 }
 \value{
 A dataframe which includes the following columns:
@@ -34,10 +34,10 @@ A dataframe which includes the following columns:
 \item{p_TassocL}{component p-value for the test of association between T and L.}
 \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
 \item{p_GassocLgvnT}{component p-value for the test of association between G and L|T.}
-\item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+\item{p_TindLgvnG}{component p-value for the equivalence test of L ind T|G}
 }
 \description{
-This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+This function implements a formal statistical hypothesis test, resulting in a p-value, to would become "would become "quantify uncertainty in a causal inference pertaining to a measured factor or factors or factors, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 }
 \details{
 Increasing maxit will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true.  If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
@@ -54,7 +54,7 @@ e2 = matrix(rnorm(ss), ncol=1)
 L = matrix(rbinom(ss*3,2,.5), ncol=3)
 G = matrix(apply(.3*L, 1, sum) + e1, ncol=1)
 T = matrix(.3*G + e2, ncol=1)
-C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+CT = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
 CG = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
 
 n.perm = 5
@@ -68,10 +68,10 @@ results
 results = cit.cp(L, G, T, perm.index=perm.index, n.perm=5, robust = FALSE)
 results
 
-results = cit.cp(L, G, T, C, CG, robust = FALSE)
+results = cit.cp(L, G, T, CT, CG, robust = FALSE)
 results
 
-results = cit.cp(L, G, T, C, CG, n.perm=5, robust = FALSE)
+results = cit.cp(L, G, T, CT, CG, n.perm=5, robust = FALSE)
 results
 # Run tests for single mediators and v2 algorithm
 results = cit.cp(L, G, T)
@@ -80,10 +80,10 @@ results
 results = cit.cp(L, G, T, perm.index=perm.index, n.perm=5)
 results
 
-results = cit.cp(L, G, T, C, CG)
+results = cit.cp(L, G, T, CT, CG)
 results
 
-results = cit.cp(L, G, T, C, CG, n.perm=5)
+results = cit.cp(L, G, T, CT, CG, n.perm=5)
 results
 
 # Errors for multiple mediators.
@@ -95,7 +95,7 @@ L = matrix(rbinom(ss*3,2,.5), ncol=3)
 G = matrix(apply(.3*L, 1, sum) + e1, ncol=3)
 T = matrix(.3*G + e2, ncol=3)
 T <- rowSums(T)
-C = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
+CT = matrix(matrix(rnorm(ss*2), ncol=1), ncol=2)
 
 n.perm = 5
 perm.index = matrix(NA, nrow=ss, ncol=n.perm)
@@ -108,10 +108,10 @@ results
 results = cit.cp(L, G, T, perm.index=perm.index, n.perm=5, robust = FALSE)
 results
 
-results = cit.cp(L, G, T, C, robust = FALSE)
+results = cit.cp(L, G, T, CT, robust = FALSE)
 results
 
-results = cit.cp(L, G, T, C, n.perm=5, robust = FALSE)
+results = cit.cp(L, G, T, CT, n.perm=5, robust = FALSE)
 results
 # Run tests for multiple mediators and v2 algorithm
 results = cit.cp(L, G, T)
@@ -120,15 +120,16 @@ results
 results = cit.cp(L, G, T, perm.index=perm.index, n.perm=5)
 results
 
-results = cit.cp(L, G, T, C)
+results = cit.cp(L, G, T, CT)
 results
 
-results = cit.cp(L, G, T, C, n.perm=5)
+results = cit.cp(L, G, T, CT, n.perm=5)
 results
 
 }
 \references{
 Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+
 Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
 }
 \author{

@@ -11,8 +11,8 @@ NULL
 # Date: 05/03/23
 #
 # Input:
-#   L: vector or nxp matrix of continuous instrumental variables
-#   G: vector or nxp matrix of candidate causal mediators.
+#   L: Numeric or integer vector or nxp design matrix or dataframe representing the instrumental variable(s).
+#   G: Numeric or integer vector, matrix, or dataframe representing the candidate causal mediator(s).
 #   T: vector or nxp matrix of traits
 #   CT: vector or nxp matrix of traits
 #   perm.index is n x n.perm matrix of random indices for the permutations, e.g., each column is a random permutation
@@ -1355,21 +1355,21 @@ cit.bp.m.v2 = function(L,
 
 #' Causal Inference Test for a Binary Outcome
 #'
-#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a trait or clinical outcome. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is binary, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to would become "would become "quantify uncertainty in a causal inference pertaining to a measured factor or factors or factors, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a trait or clinical outcome. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is binary, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
 #' @usage
 #' cit.bp(L, G, T, CT=NULL, CG=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robust=TRUE)
 #'
-#' @param L Vector or nxp design matrix representing the instrumental variable(s).
-#' @param G Continuous vector representing the potential causal mediator.
-#' @param T Binary vector representing the clinical trait or outcome of interest.
-#' @param CT Vector or nxp design matrix representing adjustment covariates for T as the outcome.
-#' @param CG Vector or nxp design matrix representing adjustment covariates for G as the outcome.
+#' @param L Numeric or integer vector or nxp design matrix or dataframe representing the instrumental variable(s).
+#' @param G Numeric or integer vector, matrix, or dataframe representing the candidate causal mediator(s).
+#' @param T Binary integer vector, matrix, or dataframe representing the trait or outcome.
+#' @param CT Numeric or integer vector, matrix, or dataframe representing adjustment covariates for T as the outcome.
+#' @param CG Numeric or integer vector, matrix, or dataframe representing adjustment covariates for G as the outcome.
 #' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
 #' @param n.perm Number of permutations for each component test if greater than 0.
 #' @param perm.index An n x n.perm matrix of permutation indices.
-#' @param rseed Seed for reproducible permutations.
-#' @param robust True for v2 algorithm and False for v1 algorithm
+#' @param rseed Random seed for reproducible results. The default (NULL) is to use a clock seed.
+#' @param robust The robust version (the default) is a modification that precludes a positive test result (small p-value) for both the causal and reverse causal scenarios.
 #'
 #' @details The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true. For component test 4, rather than using the semiparametric approach proposed by Millstein et al. (2009), here it is estimated completely by permutation, resulting in an exact test. If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.bp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
 #'
@@ -1384,6 +1384,7 @@ cit.bp.m.v2 = function(L,
 #'
 #' @references
 #' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#'
 #' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
 #'
 #' @author
@@ -2519,21 +2520,21 @@ cit.cp.m.v2 = function(L,
 
 #' Causal Inference Test for a Continuous Outcome
 #'
-#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to would become "would become "quantify uncertainty in a causal inference pertaining to a measured factor or factors or factors, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
 #' @usage
 #' cit.cp(L, G, T, CT=NULL, CG=NULL, maxit=10000, n.perm=0, perm.index=NULL, rseed=NULL, robust=TRUE)
 #'
-#' @param L Vector or nxp design matrix representing the instrumental variable(s).
-#' @param G Continuous vector representing the potential causal mediator.
-#' @param T Continuous vector representing the clinical trait or outcome of interest.
-#' @param CT Vector or nxp design matrix representing adjustment covariates for T as the outcome.
-#' @param CG Vector or nxp design matrix representing adjustment covariates for G as the outcome.
+#' @param L Numeric or integer vector or nxp design matrix or dataframe representing the instrumental variable(s).
+#' @param G Numeric or integer vector, matrix, or dataframe representing the candidate causal mediator(s).
+#' @param T Numeric or integer vector, matrix, or dataframe representing the trait or outcome.
+#' @param CT Numeric or integer vector, matrix, or dataframe representing adjustment covariates for T as the outcome.
+#' @param CG Numeric or integer vector, matrix, or dataframe representing adjustment covariates for G as the outcome.
 #' @param maxit Maximum number of iterations to be conducted for the conditional independence test, test 4, which is permutation-based. The minimum number of permutations conducted is 1000, regardless of maxit. Increasing maxit will increase the precision of the p-value for test 4 if the p-value is small.
 #' @param n.perm Number of permutations for each component test if greater than 0.
 #' @param perm.index An n x n.perm matrix of permutation indices.
-#' @param rseed Seed for reproducible permutations.
-#' @param robust True for v2 algorithm and False for v1 algorithm
+#' @param rseed Random seed for reproducible results. The default (NULL) is to use a clock seed.
+#' @param robust The robust version (the default) is a modification that precludes a positive test result (small p-value) for both the causal and reverse causal scenarios.
 #'
 #' @details Increasing maxit will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true.  If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
 #'
@@ -2548,6 +2549,7 @@ cit.cp.m.v2 = function(L,
 #'
 #' @references
 #' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#'
 #' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
 #'
 #' @author
@@ -2755,20 +2757,20 @@ phreg = function( nms.full, nms.redu=NULL, nm.t, nm.e, mydat ){
 
 #' Causal Inference Test for survival outcomes
 #'
-#' This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+#' This function implements a formal statistical hypothesis test, resulting in a p-value, to would become "would become "quantify uncertainty in a causal inference pertaining to a measured factor or factors or factors, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 #'
 #' @usage
 #' cit.cox = function( L, G, T, E, CT=NULL, n.resampl=50, n.perm=0, perm.index=NULL, rseed=NULL )
 #'
-#' @param L Vector or nxp design matrix representing the instrumental variable(s).
-#' @param G Continuous vector representing the potential causal mediator.
+#' @param L Numeric or integer vector or nxp design matrix or dataframe representing the instrumental variable(s).
+#' @param G Numeric or integer vector, matrix, or dataframe representing the candidate causal mediator(s).
 #' @param T Continuous vector representing time values for time-to-event outcome.
 #' @param E Vector of events, 0:censored, 1:event.
 #' @param CT Vector or nxp design matrix representing adjustment covariates when Y is T.
 #' @param n.resampl The number of instances of the test statistic for conditional independence (test 4) generated by ermutation (Millstein et al. 2009) under the null hypothesis of no mediation (independent effects of L on G and T). These data are used to estimate the parameters of the null distribution. The default is set to 50, which we have found to provide reasonable precision.
 #' @param n.perm Number of permutations for each component test if greater than 0.
 #' @param perm.index An n x n.perm matrix of permutation indices.
-#' @param rseed Seed for reproducible permutations.
+#' @param rseed Random seed for reproducible results. The default (NULL) is to use a clock seed.
 #'
 #' @details Increasing n.resampl will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, cit.cp 7 however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true. If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
 #'
@@ -2782,6 +2784,7 @@ phreg = function( nms.full, nms.redu=NULL, nm.t, nm.e, mydat ){
 #'
 #' @references
 #' Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+#'
 #' Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
 #'
 #' @author

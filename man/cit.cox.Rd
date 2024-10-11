@@ -7,9 +7,9 @@
 cit.cox = function( L, G, T, E, CT=NULL, n.resampl=50, n.perm=0, perm.index=NULL, rseed=NULL )
 }
 \arguments{
-\item{L}{Vector or nxp design matrix representing the instrumental variable(s).}
+\item{L}{Numeric or integer vector or nxp design matrix or dataframe representing the instrumental variable(s).}
 
-\item{G}{Continuous vector representing the potential causal mediator.}
+\item{G}{Numeric or integer vector, matrix, or dataframe representing the candidate causal mediator(s).}
 
 \item{T}{Continuous vector representing time values for time-to-event outcome.}
 
@@ -23,7 +23,7 @@ cit.cox = function( L, G, T, E, CT=NULL, n.resampl=50, n.perm=0, perm.index=NULL
 
 \item{perm.index}{An n x n.perm matrix of permutation indices.}
 
-\item{rseed}{Seed for reproducible permutations.}
+\item{rseed}{Random seed for reproducible results. The default (NULL) is to use a clock seed.}
 }
 \value{
 A dataframe which includes the following columns:
@@ -31,10 +31,10 @@ A dataframe which includes the following columns:
 \item{p_cit}{CIT (omnibus) p-value}
 \item{p_TassocL}{component p-value for the test of association between T and L.}
 \item{p_TassocGgvnL}{component p-value for the test of association between T and G|L.}
-\item{p_LindTgvnG}{component p-value for the equivalence test of L ind T|G}
+\item{p_TindLgvnG}{component p-value for the equivalence test of L ind T|G}
 }
 \description{
-This function implements a formal statistical hypothesis test, resulting in a p-value, to quantify uncertainty in a causal inference pertaining to a measured factor, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
+This function implements a formal statistical hypothesis test, resulting in a p-value, to would become "would become "quantify uncertainty in a causal inference pertaining to a measured factor or factors or factors, e.g. a molecular species, which potentially mediates a known causal association between a locus or other instrumental variable and a quantitative trait. If the number of permutations is greater than zero,  then the results can be used with fdr.cit to generate permutation-based FDR values (q-values) that are returned with confidence intervals to quantify uncertainty in the estimate. The outcome is continuous, the potential mediator is continuous, and the instrumental variable can be continuous, discrete (such as coding a SNP 0, 1, 2), or binary and is not limited to a single variable but may be a design matrix representing multiple variables.
 }
 \details{
 Increasing n.resampl will increase the precision of the component test 4, the conditional independence test. This may be useful if a very small p-value is observed and high precision is desired, cit.cp 7 however, it will increase run time. The omnibus p-value, p_cit, is the maximum of the component p-values, an intersection-union test, representing the probability of the data if at least one of the component null hypotheses is true. If permutations are conducted by setting n.perm to a value greater than zero, then the results are provided in matrix (dataframe) form, where each row represents an analysis using a unique permutation, except the first row (perm = 0), which has results from the observed or non-permuted analysis. These results can then be aggregated across multiple cit.cp tests and input to the function fdr.cit to generate component test FDR values (q-values) as well as omnibus q-values with confidence intervals that correspond to the p_cit omnibus p-values.
@@ -76,6 +76,7 @@ results
 }
 \references{
 Millstein J, Chen GK, Breton CV. 2016. cit: hypothesis testing software for mediation analysis in genomic applications. Bioinformatics. PMID: 27153715.
+
 Millstein J, Zhang B, Zhu J, Schadt EE. 2009. Disentangling molecular relationships with a causal inference test. BMC Genetics, 10:23.
 }
 \author{
