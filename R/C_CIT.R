@@ -1047,7 +1047,8 @@ cit.bp.m.v1 = function(L,
       for (j in 1:length(fncp)) {
         ind.perm = 1:nrow(mydat)
         if (j > 1)
-          ind.perm = sample(1:nrow(mydat))
+          ind.perm = perm.index[, j - 1]+1
+          #ind.perm = sample(1:nrow(mydat))
         tmpdat = mydat
         tmpdat[, L.nms] = mydat[ind.perm, L.nms]
         p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, c("T", CG.nms)], fncp[j])
@@ -1320,7 +1321,8 @@ cit.bp.m.v2 = function(L,
       for (j in 1:length(fncp)) {
         ind.perm = 1:nrow(mydat)
         if (j > 1)
-          ind.perm = sample(1:nrow(mydat))
+          ind.perm = perm.index[, j - 1]+1
+          #ind.perm = sample(1:nrow(mydat))
         tmpdat = mydat
         tmpdat[, L.nms] = mydat[ind.perm, L.nms]
         p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, c("T", CG.nms)], fncp[j])
@@ -2211,7 +2213,8 @@ cit.cp.m.v1 = function(L,
       for (j in 1:length(fncp)) {
         ind.perm = 1:nrow(mydat)
         if (j > 1)
-          ind.perm = sample(1:nrow(mydat))
+          ind.perm = perm.index[, j - 1] + 1
+          # ind.perm = sample(1:nrow(mydat))
         tmpdat = mydat
         tmpdat[, L.nms] = mydat[ind.perm, L.nms]
         p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, c("T", CG.nms)], fncp[j])
@@ -2483,7 +2486,8 @@ cit.cp.m.v2 = function(L,
       for (j in 1:length(fncp)) {
         ind.perm = 1:nrow(mydat)
         if (j > 1)
-          ind.perm = sample(1:nrow(mydat))
+          ind.perm = perm.index[, j - 1]+1
+          #ind.perm = sample(1:nrow(mydat))
         tmpdat = mydat
         tmpdat[, L.nms] = mydat[ind.perm, L.nms]
         p3[j] = linregM.nc(tmpdat[, L.nms], tmpdat[, G.nms], tmpdat[, c("T", CG.nms)], fncp[j])
