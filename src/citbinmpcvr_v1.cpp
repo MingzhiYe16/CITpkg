@@ -71,7 +71,6 @@ void citbinmpcvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVect
 	// gsl_vector *c = NULL;
 	// gsl_vector Gmj = NULL;
 
-	// cout << "HI 1" << endl;
 
 	designmat = new double[nobs * (dfc + dfz + dfx + 1)];
 	phenovec = new double[nobs];

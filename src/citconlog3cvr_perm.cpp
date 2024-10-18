@@ -32,9 +32,9 @@ void citconlog3pcvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericV
 {
 	unsigned seed = rseed;
 
-	int rw, brw, cl, i, j, rind, df, df1, df2, npos, nperm, dncol, perm, firstloop;
+	int rw, brw, cl, i, j, rind, df, npos, nperm, dncol, perm, firstloop;
 	int *bootind, *nposperm;
-	double rss2, rss3, rss5, F, pv, pvalind, pvp, tmp, rhs;
+	double rss5, pv, pvalind, pvp, tmp, rhs;
 	double *designmat, *phenovec, *pindep;
 	bool aa, bb, converged, permute;
 	const int posno = 20;
@@ -212,14 +212,15 @@ void citconlog3pcvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericV
 		pv = (converged) ? pv : std::numeric_limits<double>::quiet_NaN();
 		pval2[perm] = pv; // pval for T ~ G|L,C, 9 if it did not converge, p2
 
-		// fit model G ~ T + CG
-		dncol = 2 + ncolct; // Adjust the number of columns to include CG
-		rind = 0;
+        // fit model G ~ L + T + CG, L could be reduced
+		gsl_multifit_linear_workspace *work;
+		rind=0;
+		dncol=ncolct + ncol + 1 + 1; // CG + L + T + Intercept
 		for (rw = 0; rw < nrow; rw++)
 		{
 			brw = bootind[rw];
+
 			aa = 1;
-			aa = (T[rw] != -9999) ? aa : 0;
 			aa = (G[rw] != -9999) ? aa : 0;
 			for (cl = 0; cl < ncol; cl++)
 			{
@@ -227,127 +228,32 @@ void citconlog3pcvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericV
 			}
 			for (cl = 0; cl < ncolct; cl++)
 			{
-				aa = (CGG[brw][cl] != -9999) ? aa : 0;
+				aa = (CGG[rw][cl] != -9999) ? aa : 0;
 			}
 			if (aa)
 			{
-				rind++;
-			} // end if aa
-		} // end for rw
-
-		X = gsl_matrix_alloc(rind, dncol);
-		Gm = gsl_vector_alloc(rind);
-
-		rind = 0;
-		for (rw = 0; rw < nrow; rw++)
-		{
-			brw = bootind[rw];
-			aa = 1;
-			aa = (T[rw] != -9999) ? aa : 0;
-			aa = (G[rw] != -9999) ? aa : 0;
-			for (cl = 0; cl < ncol; cl++)
-			{
-				aa = (LL[brw][cl] != -9999) ? aa : 0;
-			}
-			for (cl = 0; cl < ncolct; cl++)
-			{
-				aa = (CGG[brw][cl] != -9999) ? aa : 0;
-			}
-			if (aa)
-			{
-				gsl_matrix_set(X, rind, 0, 1.0); // intercept
-				gsl_matrix_set(X, rind, 1, T[rw]);
-				for (cl = 0; cl < ncolct; cl++)
+				phenovec[rind] = G[rw];
+				designmat[rind * dncol] = 1; // intercept
+				designmat[rind * dncol + 1] = T[rw]; // T
+				for (cl = 0; cl < ncolct; cl++) // CG
 				{
-					gsl_matrix_set(X, rind, 2 + cl, CGG[brw][cl]);
+					designmat[rind * dncol + 2 + cl] = CGG[rw][cl];
 				}
-				gsl_vector_set(Gm, rind, G[rw]);
-				rind++;
-			} // end if aa
-		} // end for rw
-
-		c = gsl_vector_alloc(dncol);
-		cov = gsl_matrix_alloc(dncol, dncol);
-		gsl_multifit_linear_workspace *work = gsl_multifit_linear_alloc(rind, dncol);
-		gsl_multifit_linear(X, Gm, c, cov, &rss2, work);
-		gsl_multifit_linear_free(work);
-		gsl_matrix_free(X);
-		gsl_vector_free(Gm);
-		gsl_matrix_free(cov);
-		gsl_vector_free(c);
-
-		// fit model G ~ L + T + CG
-		dncol = 1 + ncol + 1 + ncolct; // Adjust for T and CG
-		rind = 0;
-		for (rw = 0; rw < nrow; rw++)
-		{
-			brw = bootind[rw];
-			aa = 1;
-			aa = (T[rw] != -9999) ? aa : 0;
-			aa = (G[rw] != -9999) ? aa : 0;
-			for (cl = 0; cl < ncol; cl++)
-			{
-				aa = (LL[brw][cl] != -9999) ? aa : 0;
-			}
-			for (cl = 0; cl < ncolct; cl++)
-			{
-				aa = (CGG[brw][cl] != -9999) ? aa : 0;
-			}
-			if (aa)
-			{
-				rind++;
-			} // end if aa
-		} // end for rw
-
-		X = gsl_matrix_alloc(rind, dncol);
-		Gm = gsl_vector_alloc(rind);
-
-		rind = 0;
-		for (rw = 0; rw < nrow; rw++)
-		{
-			brw = bootind[rw];
-			aa = 1;
-			aa = (T[rw] != -9999) ? aa : 0;
-			aa = (G[rw] != -9999) ? aa : 0;
-			for (cl = 0; cl < ncol; cl++)
-			{
-				aa = (LL[brw][cl] != -9999) ? aa : 0;
-			}
-			for (cl = 0; cl < ncolct; cl++)
-			{
-				aa = (CGG[brw][cl] != -9999) ? aa : 0;
-			}
-			if (aa)
-			{
-				gsl_matrix_set(X, rind, 0, 1.0); // intercept
 				for (cl = 0; cl < ncol; cl++)
 				{
-					gsl_matrix_set(X, rind, cl + 1, LL[brw][cl]);
+					designmat[rind * dncol + ncolct + 2 + cl] = LL[brw][cl];
 				}
-				gsl_matrix_set(X, rind, 1 + ncol, T[rw]);
-				for (cl = 0; cl < ncolct; cl++)
-				{
-					gsl_matrix_set(X, rind, 2 + ncol + cl, CGG[brw][cl]);
-				}
-				gsl_vector_set(Gm, rind, G[rw]);
 				rind++;
 			} // end if aa
 		} // end for rw
 
-		c = gsl_vector_alloc(dncol);
-		cov = gsl_matrix_alloc(dncol, dncol);
-		work = gsl_multifit_linear_alloc(rind, dncol);
-		gsl_multifit_linear(X, Gm, c, cov, &rss3, work);
-		gsl_multifit_linear_free(work);
-		gsl_matrix_free(X);
-		gsl_vector_free(Gm);
-		gsl_matrix_free(cov);
-		gsl_vector_free(c);
-		df1 = ncol; // Adjusted DF for added CG covariates
-		df2 = rind - dncol;
-		F = df2 * (rss2 - rss3) / (rss3 * df1);
-		pv = gsl_cdf_fdist_Q(F, df1, df2);
-		pval3[perm] = pv; // pval for G ~ L|T, adjusted for CG
+		df=ncol;
+		converged = logisticReg(pv, phenovec, designmat, rind, dncol, df);
+		if (!converged)
+			Rcpp::Rcout << "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
+		pv = (converged) ? pv : std::numeric_limits<double>::quiet_NaN();
+		pval3[perm] = pv; // pval for G ~ L + T + CG, L could be reduced, p3
+
 
 		// fit model T ~ C + G + L
 		if (perm == 0)

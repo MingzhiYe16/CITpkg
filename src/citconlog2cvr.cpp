@@ -33,8 +33,8 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 {
 
     unsigned seed = rseed;
-    int rw, cl, i, rind, df, df1, df2, nobs, ip, npos, nperm, nmiss, stride;
-    double rss2, rss3, rss5, F, tmp, rhs, maxp, testval;
+    int rw, cl, i, rind, df, nobs, ip, npos, nperm, nmiss, stride;
+    double rss5, tmp, rhs, maxp, testval;
     double pv = 9.0;  // Need to initialize value, otherwise conditional jump
     double pvp = 9.0; // Need to initialize value, otherwise conditional jump
     double *designmat, *phenovec;
@@ -220,54 +220,46 @@ void citconlog2cvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVe
 	pv = (converged) ? pv : std::numeric_limits<double>::quiet_NaN();
 	pvec.push_back(pv); // pval for T ~ G|L,C, 9 if it did not converge, p2
 
-    // fit model G ~ T + CG
-    X = gsl_matrix_alloc(nobs, 2 + ncolct);
-    for (rw = 0; rw < nobs; rw++)
-    {
-        gsl_matrix_set(X, rw, 0, 1.0); // intercept
-        gsl_matrix_set(X, rw, 1, gsl_vector_get(Tm, rw));
-        for (cl = 0; cl < ncolct; cl++)
-        {
-            gsl_matrix_set(X, rw, cl + 2, gsl_matrix_get(CGm, rw, cl)); // Add CG as covariates next to T
-        }
-    }
-    c = gsl_vector_alloc(2 + ncolct);
-    cov = gsl_matrix_alloc(2 + ncolct, 2 + ncolct);
-    gsl_multifit_linear_workspace *work = gsl_multifit_linear_alloc(nobs, 2 + ncolct);
-    gsl_multifit_linear(X, Gm, c, cov, &rss2, work);
-    gsl_multifit_linear_free(work);
-    gsl_matrix_free(X);
-    gsl_matrix_free(cov);
-    gsl_vector_free(c);
+        // fit model G ~ L + T + CG, L could be reduced
+		gsl_multifit_linear_workspace *work;
+		rind=0;
+		int dncol=ncolct + ncol + 1 + 1; // CG + L + T + Intercept
+		for (rw = 0; rw < nrow; rw++)
+		{
+			aa = 1;
+			aa = (G[rw] != -9999) ? aa : 0;
+			for (cl = 0; cl < ncol; cl++)
+			{
+				aa = (LL[rw][cl] != -9999) ? aa : 0;
+			}
+			for (cl = 0; cl < ncolct; cl++)
+			{
+				aa = (CGG[rw][cl] != -9999) ? aa : 0;
+			}
+			if (aa)
+			{
+				phenovec[rind] = G[rw];
+				designmat[rind * dncol] = 1; // intercept
+				designmat[rind * dncol + 1] = T[rw]; // T
+				for (cl = 0; cl < ncolct; cl++) // CG
+				{
+					designmat[rind * dncol + 2 + cl] = CGG[rw][cl];
+				}
+				for (cl = 0; cl < ncol; cl++)
+				{
+					designmat[rind * dncol + ncolct + 2 + cl] = LL[rw][cl];
+				}
+				rind++;
+			} // end if aa
+		} // end for rw
 
-    // fit model G ~ L + T + CG
-    X = gsl_matrix_alloc(nobs, ncol + 2 + ncolct);
-    for (rw = 0; rw < nobs; rw++)
-    {
-        gsl_matrix_set(X, rw, 0, 1.0); // intercept
-        for (cl = 0; cl < ncol; cl++)
-        {
-            gsl_matrix_set(X, rw, cl + 1, gsl_matrix_get(Lm, rw, cl));
-        }
-        gsl_matrix_set(X, rw, ncol + 1, gsl_vector_get(Tm, rw)); // Position of T adjusted for additional CG covariates
-        for (cl = 0; cl < ncolct; cl++)
-        {
-            gsl_matrix_set(X, rw, cl + ncol + 2, gsl_matrix_get(CGm, rw, cl)); // Add CG as covariates next to T
-        }
-    }
-    c = gsl_vector_alloc(ncol + 2 + ncolct); // Adjust coefficient vector size
-    cov = gsl_matrix_alloc(ncol + 2 + ncolct, ncol + 2 + ncolct); // Adjust covariance matrix size
-    work = gsl_multifit_linear_alloc(nobs, ncol + 2 + ncolct);
-    gsl_multifit_linear(X, Gm, c, cov, &rss3, work);
-    gsl_multifit_linear_free(work);
-    gsl_matrix_free(X);
-    gsl_matrix_free(cov);
-    gsl_vector_free(c);
-    df1 = ncol; // Adjust degrees of freedom for L and CG
-    df2 = nobs - (ncol + 2 + ncolct); // Adjust degrees of freedom to reflect added CG covariates
-    F = df2 * (rss2 - rss3) / (rss3 * df1);
-    pv = gsl_cdf_fdist_Q(F, df1, df2);
-    pvec.push_back(pv); // pval for G ~ L|T + CG, p3
+		df=ncol;
+		converged = logisticReg(pv, phenovec, designmat, rind, dncol, df);
+		if (!converged)
+			Rcpp::Rcout << "Warning: Cannot Converge when doing regression for calculating P-value." << std::endl;
+		pv = (converged) ? pv : std::numeric_limits<double>::quiet_NaN();
+		pvec.push_back(pv); // pval for G ~ L + T + CG, L could be reduced, p3
+
 
 
 	// fit model T ~ C + G + L to test L

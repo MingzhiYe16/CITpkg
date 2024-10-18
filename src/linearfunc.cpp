@@ -85,7 +85,7 @@ gsl_matrix* removeCollinearColumns(gsl_matrix *X, int &new_rank, int samplesize)
     return X_new;
 }
 
-bool linearReg(double *phenovec_filtered, double *designmat_filtered, int &samplesize, int &rank, int &df, double *SR) {
+bool linearReg(double *phenovec_filtered, double *designmat_filtered, int &samplesize, int &rank, int &df, double *SR, int &actual_df) {
     gsl_matrix_view X_view = gsl_matrix_view_array(designmat_filtered, samplesize, rank);
     gsl_matrix_view subX_view = gsl_matrix_submatrix(&X_view.matrix, 0, 0, samplesize, rank - df);
     gsl_matrix* X = &(subX_view.matrix);
@@ -145,17 +145,20 @@ bool linearReg(double *phenovec_filtered, double *designmat_filtered, int &sampl
     gsl_matrix_free(invert_XTX);
     gsl_matrix_free(Beta);
     gsl_matrix_free(Xb);
+    actual_df = new_rank;
     return true;
 }
 
 bool linearRegCompare(double &pvalue, double *phenovec_filtered, double *designmat_filtered, int &samplesize, int &rank, int &df) {
     double *SR_FULL = new double[samplesize];
-    int df_full = 0;  // Define df as a variable
-    bool B1 = linearReg(phenovec_filtered, designmat_filtered, samplesize, rank, df_full, SR_FULL);
+    int to_reduce = 0;  // Define df as a variable
+    int actual_df1 = 0;
+    bool B1 = linearReg(phenovec_filtered, designmat_filtered, samplesize, rank, to_reduce, SR_FULL, actual_df1);
 
     double *SR_LIMIT = new double[samplesize];
-    int df_limit = df;  // Use the appropriate value for df
-    bool B2 = linearReg(phenovec_filtered, designmat_filtered, samplesize, rank, df_limit, SR_LIMIT);
+    to_reduce = df;  // Use the appropriate value for df
+    int actual_df2 = 0;
+    bool B2 = linearReg(phenovec_filtered, designmat_filtered, samplesize, rank, to_reduce, SR_LIMIT, actual_df2);
 
     if (!B1 || !B2) {
         delete[] SR_FULL;
@@ -169,7 +172,8 @@ bool linearRegCompare(double &pvalue, double *phenovec_filtered, double *designm
         RSS2=RSS2+SR_FULL[i];
     }
 
-    double F_statistics = ((RSS1 - RSS2) / df) / (RSS2 / (samplesize - rank));
+
+    double F_statistics = ((RSS1 - RSS2) / (actual_df1 - actual_df2)) / (RSS2 / (samplesize - actual_df1));
     pvalue = gsl_cdf_fdist_Q(F_statistics, static_cast<double>(df), static_cast<double>(samplesize - rank));
 
     delete[] SR_FULL;
