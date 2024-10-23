@@ -159,15 +159,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // citbinpcvr
-void citbinpcvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector CG, Rcpp::NumericVector C, int& maxit, int& permit, int& boots, int& nrow, int& ncol, int& ncolc, int& ncolct, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, Rcpp::NumericVector pval3nc, Rcpp::IntegerVector perm_index, int& rseed);
-RcppExport SEXP _CITpkg_citbinpcvr(SEXP LSEXP, SEXP GSEXP, SEXP TSEXP, SEXP CGSEXP, SEXP CSEXP, SEXP maxitSEXP, SEXP permitSEXP, SEXP bootsSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP ncolcSEXP, SEXP ncolctSEXP, SEXP pval1SEXP, SEXP pval2SEXP, SEXP pval3SEXP, SEXP pval4SEXP, SEXP pval3ncSEXP, SEXP perm_indexSEXP, SEXP rseedSEXP) {
+void citbinpcvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector C, Rcpp::NumericVector CG, int& maxit, int& permit, int& boots, int& nrow, int& ncol, int& ncolc, int& ncolct, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, Rcpp::NumericVector pval3nc, Rcpp::IntegerVector perm_index, int& rseed);
+RcppExport SEXP _CITpkg_citbinpcvr(SEXP LSEXP, SEXP GSEXP, SEXP TSEXP, SEXP CSEXP, SEXP CGSEXP, SEXP maxitSEXP, SEXP permitSEXP, SEXP bootsSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP ncolcSEXP, SEXP ncolctSEXP, SEXP pval1SEXP, SEXP pval2SEXP, SEXP pval3SEXP, SEXP pval4SEXP, SEXP pval3ncSEXP, SEXP perm_indexSEXP, SEXP rseedSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type L(LSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type G(GSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type T(TSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type CG(CGSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type C(CSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type CG(CGSEXP);
     Rcpp::traits::input_parameter< int& >::type maxit(maxitSEXP);
     Rcpp::traits::input_parameter< int& >::type permit(permitSEXP);
     Rcpp::traits::input_parameter< int& >::type boots(bootsSEXP);
@@ -182,20 +182,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type pval3nc(pval3ncSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type perm_index(perm_indexSEXP);
     Rcpp::traits::input_parameter< int& >::type rseed(rseedSEXP);
-    citbinpcvr(L, G, T, CG, C, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed);
+    citbinpcvr(L, G, T, C, CG, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed);
     return R_NilValue;
 END_RCPP
 }
 // citbinpcvr_linear
-void citbinpcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector CG, Rcpp::NumericVector C, int& maxit, int& permit, int& boots, int& nrow, int& ncol, int& ncolc, int& ncolct, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, Rcpp::NumericVector pval3nc, Rcpp::IntegerVector perm_index, int& rseed);
-RcppExport SEXP _CITpkg_citbinpcvr_linear(SEXP LSEXP, SEXP GSEXP, SEXP TSEXP, SEXP CGSEXP, SEXP CSEXP, SEXP maxitSEXP, SEXP permitSEXP, SEXP bootsSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP ncolcSEXP, SEXP ncolctSEXP, SEXP pval1SEXP, SEXP pval2SEXP, SEXP pval3SEXP, SEXP pval4SEXP, SEXP pval3ncSEXP, SEXP perm_indexSEXP, SEXP rseedSEXP) {
+void citbinpcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector C, Rcpp::NumericVector CG, int& maxit, int& permit, int& boots, int& nrow, int& ncol, int& ncolc, int& ncolct, Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, Rcpp::NumericVector pval3nc, Rcpp::IntegerVector perm_index, int& rseed);
+RcppExport SEXP _CITpkg_citbinpcvr_linear(SEXP LSEXP, SEXP GSEXP, SEXP TSEXP, SEXP CSEXP, SEXP CGSEXP, SEXP maxitSEXP, SEXP permitSEXP, SEXP bootsSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP ncolcSEXP, SEXP ncolctSEXP, SEXP pval1SEXP, SEXP pval2SEXP, SEXP pval3SEXP, SEXP pval4SEXP, SEXP pval3ncSEXP, SEXP perm_indexSEXP, SEXP rseedSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type L(LSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type G(GSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type T(TSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type CG(CGSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type C(CSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type CG(CGSEXP);
     Rcpp::traits::input_parameter< int& >::type maxit(maxitSEXP);
     Rcpp::traits::input_parameter< int& >::type permit(permitSEXP);
     Rcpp::traits::input_parameter< int& >::type boots(bootsSEXP);
@@ -210,7 +210,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type pval3nc(pval3ncSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type perm_index(perm_indexSEXP);
     Rcpp::traits::input_parameter< int& >::type rseed(rseedSEXP);
-    citbinpcvr_linear(L, G, T, CG, C, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed);
+    citbinpcvr_linear(L, G, T, C, CG, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed);
     return R_NilValue;
 END_RCPP
 }

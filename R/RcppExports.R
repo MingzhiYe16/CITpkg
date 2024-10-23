@@ -25,12 +25,12 @@ citbinmpcvr_linear <- function(L, G, T, C, maxit, permit, permnum, nobs, dfz, df
     invisible(.Call('_CITpkg_citbinmpcvr_linear', PACKAGE = 'CITpkg', L, G, T, C, maxit, permit, permnum, nobs, dfz, dfx, dfc, pval1, pval2, pval4, pval3nc, perm_index, rseed))
 }
 
-citbinpcvr <- function(L, G, T, CG, C, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed) {
-    invisible(.Call('_CITpkg_citbinpcvr', PACKAGE = 'CITpkg', L, G, T, CG, C, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed))
+citbinpcvr <- function(L, G, T, C, CG, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed) {
+    invisible(.Call('_CITpkg_citbinpcvr', PACKAGE = 'CITpkg', L, G, T, C, CG, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed))
 }
 
-citbinpcvr_linear <- function(L, G, T, CG, C, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed) {
-    invisible(.Call('_CITpkg_citbinpcvr_linear', PACKAGE = 'CITpkg', L, G, T, CG, C, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed))
+citbinpcvr_linear <- function(L, G, T, C, CG, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed) {
+    invisible(.Call('_CITpkg_citbinpcvr_linear', PACKAGE = 'CITpkg', L, G, T, C, CG, maxit, permit, boots, nrow, ncol, ncolc, ncolct, pval1, pval2, pval3, pval4, pval3nc, perm_index, rseed))
 }
 
 citconlog2cvr <- function(L, G, T, C, CG, nrow, ncol, ncolc, ncolct, pval, pval1, pval2, pval3, pval4, maxit, rseed) {

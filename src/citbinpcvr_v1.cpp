@@ -27,7 +27,7 @@ Programmer: Joshua Millstein
 // conduct permutations individually for each test so an intersection-union type approach can be applied to permutation-FDR
 
 // [[Rcpp::export]]
-void citbinpcvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector CG, Rcpp::NumericVector C,
+void citbinpcvr(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector C, Rcpp::NumericVector CG,
                 int &maxit, int &permit, int &boots, int &nrow, int &ncol, int &ncolc, int &ncolct,
                 Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, Rcpp::NumericVector pval3nc, Rcpp::IntegerVector perm_index, int &rseed)
 {

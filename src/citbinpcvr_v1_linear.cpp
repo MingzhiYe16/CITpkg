@@ -29,10 +29,11 @@ Programmer: Joshua Millstein
 // P
 
 // [[Rcpp::export]]
-void citbinpcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector CG, Rcpp::NumericVector C,
+void citbinpcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::NumericVector T, Rcpp::NumericVector C, Rcpp::NumericVector CG,
                        int &maxit, int &permit, int &boots, int &nrow, int &ncol, int &ncolc, int &ncolct,
                        Rcpp::NumericVector pval1, Rcpp::NumericVector pval2, Rcpp::NumericVector pval3, Rcpp::NumericVector pval4, Rcpp::NumericVector pval3nc, Rcpp::IntegerVector perm_index, int &rseed)
 {
+
     unsigned seed = rseed;
     int rw, brw, cl, i, j, rind, df, npos, nperm, dncol, perm, firstloop;
     int *bootind, *nposperm;
@@ -79,6 +80,8 @@ void citbinpcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Numer
             LL[rw][cl] = L[rw + nrow * cl];
         }
     }
+
+
     for (cl = 0; cl < ncolc; cl++)
     {
         for (rw = 0; rw < nrow; rw++)
@@ -86,6 +89,7 @@ void citbinpcvr_linear(Rcpp::NumericVector L, Rcpp::NumericVector G, Rcpp::Numer
             CC[rw][cl] = C[rw + nrow * cl];
         }
     }
+
     for (cl = 0; cl < ncolct; cl++) // Populate CG matrix
     {
         for (rw = 0; rw < nrow; rw++)
